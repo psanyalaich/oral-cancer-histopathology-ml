@@ -19,7 +19,6 @@ def plot_roc_curve(y_true, y_prob, save_path):
     plt.legend()
     plt.tight_layout()
     plt.savefig(save_path, dpi=300, bbox_inches="tight")
-    plt.show()
     plt.close()
 
 def plot_feature_importance(feature_names, importances, save_path):
@@ -34,5 +33,4 @@ def plot_feature_importance(feature_names, importances, save_path):
     plt.ylabel("Importance")
     plt.tight_layout()
     plt.savefig(save_path, dpi=300, bbox_inches="tight")
-    plt.show()
     plt.close()
