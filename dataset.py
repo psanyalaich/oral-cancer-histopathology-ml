@@ -1,6 +1,10 @@
 import os
 import numpy as np
-from src.preprocessing import load_image, segment_tissue
+import pandas as pd
+from src.preprocessing import (
+    load_image, 
+    segment_tissue
+)
 from src.features import extract_features
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"}
@@ -40,6 +44,9 @@ def build_dataset(
     X = []
     y = []
 
+    image_paths = []
+
+    # NORMAL LOOP
     for filename in normal_files:
         path = os.path.join(normal_dir, filename)
         try:
@@ -49,10 +56,12 @@ def build_dataset(
 
             X.append(features)
             y.append(0)
+            image_paths.append(path)
         except Exception as e:
             print(f"Failed NORMAL: {filename}")
             print(e)
 
+    # TUMOUR LOOP
     for filename in tumour_files:
         path = os.path.join(tumour_dir, filename)
         try:
@@ -62,6 +71,7 @@ def build_dataset(
 
             X.append(features)
             y.append(1)
+            image_paths.append(path)
         except Exception as e:
             print(f"Failed TUMOUR: {filename}")
             print(e)
@@ -71,5 +81,26 @@ def build_dataset(
 
     if len(X) == 0:
         raise ValueError("No images were loaded.")
+    
+    # SAVE FILE MANIFEST
+    used_files = {
+        "magnification": magnification,
+        "normal_files": normal_files,
+        "tumour_files": tumour_files,
+    }
 
-    return X, y
+    assert len(X) == len(image_paths)
+    assert len(y) == len(image_paths)
+
+    dataset_index = pd.DataFrame({
+        "index": np.arange(len(image_paths)),
+        "image_path": image_paths,
+        "label": y,
+    })
+
+    dataset_index.to_csv(
+        f"data/{magnification}/dataset_index.csv",
+        index=False,
+    )
+
+    return X, y, used_files, image_paths

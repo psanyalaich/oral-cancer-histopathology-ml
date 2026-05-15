@@ -12,113 +12,136 @@ This project evaluates:
 - Basic handcrafted features vs Haralick texture features
 - Balanced vs imbalanced datasets
 - 100x vs 400x histopathology magnifications
+- Statistical significance of model performance differences
 
 The pipeline was designed as a reproducible experimental framework for histopathology-based cancer classification research.
 
----
-
 ## Highlights
-
 - Automated experiment pipeline
 - 24 reproducible experiments
 - Cross-validation evaluation
 - ROC curve generation
 - Feature importance visualization
 - Support for Haralick texture analysis
+- Statistical significance testing
+- Confidence interval computation
 - Config-driven experiment system
-
----
+- Reproducible random seed setup
 
 # Project Structure
-
 ```text
 oral-cancer-histopathology-ml/
 │
-├── dataset.py                 # Dataset construction
-├── train_model.py             # Main experiment runner
-├── experiments.py             # Experiment configurations
-├── visualize_results.py       # ROC + feature importance plots
-├── requirements.txt
+├── data/                          # Histopathology image dataset
 │
-├── src/
-│   ├── preprocessing.py       # Tissue segmentation + image loading
-│   ├── features.py            # Feature extraction functions
-│
-├── results/
+├── results/                       # Experiment outputs
 │   ├── experiment_name/
 │   │   ├── metrics.txt
 │   │   ├── roc_curve.png
-│   │   └── feature_importance.png
+│   │   ├── confusion_matrix.png
+│   │   ├── feature_importance.png
+│   │   └── fold_metrics.csv
 │
-└── results_summary.csv
+├── cv_splits/                     # Saved reproducible train/test splits
+├── cv_splits_100x/                # Additional split sets
+│
+├── src/
+│   ├── preprocessing.py           # Tissue segmentation + image loading
+│   ├── features.py                # Feature extraction
+│   ├── metrics_utils.py           # Evaluation metrics
+│   ├── statistics_utils.py        # Statistical testing utilities
+│   ├── analysis_plots.py          # Plot generation
+│   └── explainability.py          # Feature importance / explainability
+│
+├── dataset.py                     # Dataset construction
+├── experiments.py                 # Experiment definitions
+├── generate_splits.py             # Generate CV splits
+├── verify_splits.py               # Validate split integrity
+├── train_model.py                 # Main training pipeline
+├── visualize_results.py           # Visualization runner
+├── stats_analysis.py              # Statistical comparison analysis
+├── test.py                        # Debug/testing script
+│
+├── results_summary.csv            # Aggregated experiment results
+├── statistical_tests.csv          # Statistical test outputs
+│
+├── requirements.txt
+├── README.md
+└── .gitignore
 ```
 
----
-
 # Installation
-- Clone Repository: ```git clone https://github.com/yourusername/oral-cancer-histopathology-ml.git```
-- ```cd oral-cancer-histopathology-ml```
+- Clone Repository: 
+    - ```git clone https://github.com/yourusername/oral-cancer-histopathology-ml.git```
+    - ```cd oral-cancer-histopathology-ml```
 - Create virtual env: ```python -m venv venv```
 - Activate venv:
     - Windows: ```venv\Scripts\activate```
     - Linux/Mac: ```source venv/bin/activate```
 - Install dependencies: ```pip install -r requirements.txt```
 - All experiments are configured inside: ```experiments.py```
+
 - To run the full experiment pipeline: ```python train_model.py```
+    - loads images
+    - preprocesses tissue regions
+    - extracts features
+    - trains models
+    - performs cross-validation
+    - computes evaluation metrics
+    - generates predictions
+    - saves experiment outputs
+- To generate visualzation: ```python visualize_results.py```
+    - ROC curves
+    - confusion matrices
+    - feature importance plots
+- To run statistical analysis: ```python stats_analysis.py```
+    - paired t-tests
+    - Wilcoxon signed-rank tests
+    - effect size calculations
+    - saves dataset into ```statistical_tests.csv```
 
 # Dataset
-
 Source: 
-- Rahman, Tabassum Yesmin; Mahanta, Lipi B.; Das, Anup  K.; Sarma, Jagannath D. (2023), “Histopathological imaging database for Oral Cancer analysis ”, Mendeley Data, V2, doi: 10.17632/ftmp4cvtmb.2
+- Rahman, Tabassum Yesmin; Mahanta, Lipi B.; Das, Anup  K.; Sarma, Jagannath D. (2023), “Histopathological imaging database for Oral Cancer analysis ”
+- DOI:  10.17632/ftmp4cvtmb.2
 - [Histopathological imaging database for Oral Cancer analysis](https://data.mendeley.com/datasets/ftmp4cvtmb/2)
 
 Dataset description:
 * H&E stained tissue slides
 * Captured using Leica ICC50 HD microscope
 * Images collected from 230 patients
+* Binary classification:
+    * Normal tissue
+    * OSCC tumour tissue
 
 ## Magnifications Used
-
 ### 100x
-
 * 89 normal images
 * 439 tumour images
-
 ### 400x
-
 * 201 normal images
 * 495 tumour images
-
----
 
 # Reproducibility
 
 Fixed random seeds were used throughout the project: ```random_state = 42```
 
-This was applied to:
-
+This was applied to the folloring to ensure reproducible experimental results:
 - Random Forest
 - SVM
 - Stratified K-Fold splitting
-
-to ensure reproducible experimental results.
-
----
+- NumPy randomization
 
 # Preprocessing Pipeline
 
 ## 1. Image Loading
-
 Images are:
-
 * loaded using OpenCV
 * converted from BGR to RGB
 * resized to 512 × 512
 
 ## 2. Tissue Segmentation
-
 A tissue mask is generated using:
-
 * grayscale conversion
 * Gaussian blur
 * Otsu thresholding
@@ -126,39 +149,45 @@ A tissue mask is generated using:
 
 This helps remove background regions and focuses feature extraction on tissue regions.
 
----
-
 # Feature Extraction
+The machine learning models do not directly analyze raw images.
+
+Each image is converted into a numerical feature vector representing:
+* color distribution
+* texture patterns
+* tissue heterogeneity
+* structural organization
 
 ## 1. Color Features
-
 For each RGB channel:
-
 * mean intensity
 * standard deviation
 
 Total color features: 6
 
----
+These help capture stain distribution and color variation.
 
 ## 2. Local Binary Pattern (LBP)
-
 LBP texture descriptors were extracted from grayscale tissue regions.
 
-Histogram bins:
+For each pixel:
+* neighboring pixels are compared
+* binary texture patterns are generated
+* histogram representation is computed
 
-* 10 uniform LBP bins
+Histogram bins: 10 uniform LBP bins
+Total LBP features: 10 features
 
-Total LBP features: 10
+LBP captures:
+* local cellular texture
+* nucleus density variation
+* structural irregularities
 
----
 
 ## 3. Haralick Texture Features
-
 Gray-Level Co-occurrence Matrix (GLCM) features were extracted.
 
 Features used:
-
 * contrast
 * correlation
 * energy
@@ -166,27 +195,26 @@ Features used:
 
 Total Haralick features: 4
 
----
-
 # Machine Learning Models
 
 ## Random Forest
-
-Parameters:
+GridSearchCV optimized:
+* number of estimators
+* maximum depth
+* minimum samples split
 
 ```python
 RandomForestClassifier(
-    n_estimators=100,
     class_weight="balanced",
     random_state=42
 )
 ```
 
----
-
 ## Support Vector Machine (SVM)
-
-Parameters:
+GridSearchCV optimized:
+* C
+* gamma
+* kernel
 
 ```python
 SVC(
@@ -197,40 +225,46 @@ SVC(
 )
 ```
 
----
-
 # Evaluation Strategy
-
-## Cross Validation
-
-5-fold stratified cross validation was used.
+- **Cross Validation**: 25-fold stratified cross validation was used.
 
 ## Metrics
-
 The following metrics were computed:
-
 * Accuracy
 * AUC
-* Sensitivity
+* PR-AUC
+* Precision
+* Recall/Sensitivity
 * Specificity
+* F1-score
+* MCC
 
-ROC curves were also generated for each experiment.
+ROC curves and confusion matrices were also generated for each experiment.
 
----
+## Statistical Analysis
+Additional statistical testing was performed using:
+* Paired t-test
+* Wilcoxon signed-rank test
+* Cohen's d effect size
+
+Purpose:
+* verify whether performance differences are statistically significant
+* avoid relying only on average accuracy values
 
 # Output Files
 
 For each experiment, the pipeline automatically generates:
-
 - `metrics.txt`
+- `fold_metrics.csv`
+- `predictions.csv`
 - `roc_curve.png`
-- `feature_importance.png` (Random Forest only)
+- `confusion_matrix.png`
+- `feature_importance.png` (Random Forest only)'
 
-All experiment outputs are stored inside: ```results/<experiment_name>/```
-
-A summary of all experiments is also stored in: ```results_summary.csv```
-
----
+Stored results:
+* All experiment outputs are stored inside: ```results/<experiment_name>/```
+* A summary of all experiments is also stored in: ```results_summary.csv```
+* Statistical test outputs are stored in: ```statistical_tests.csv```
 
 # Experiments Performed
 
@@ -238,7 +272,7 @@ A summary of all experiments is also stored in: ```results_summary.csv```
 
 | Model | Features | Magnification | Accuracy | AUC |
 |-------|-----------|---------------|----------|-----|
-| SVM | Haralick | 100x | 0.933 | 0.983 |
+| SVM | Haralick | 100x | 0.947 | 0.986 |
 
 ## Sample Outputs
 ### ROC Curve - ```svm_haralick_full_100x```
@@ -247,108 +281,132 @@ A summary of all experiments is also stored in: ```results_summary.csv```
 ### Feature Importance - ```rf_haralick_20img_100x```
 ![Feature Importance](results/sample_outputs/feature_importance.png)
 
----
-
 ## 100x Magnification
 
 ### Random Forest + Basic Features
-
 | Experiment | Accuracy | AUC   |
 | ---------- | -------- | ----- |
-| 20 vs 20   | 0.925    | 0.975 |
-| 89 vs 89   | 0.865    | 0.941 |
-| 89 vs 439  | 0.867    | 0.901 |
+| 20 vs 20   | 0.930    | 0.961 |
+| 89 vs 89   | 0.876    | 0.952 |
+| 89 vs 439  | 0.867    | 0.896 |
 
 ---
 
 ### SVM + Basic Features
-
 | Experiment | Accuracy | AUC   |
 | ---------- | -------- | ----- |
-| 20 vs 20   | 0.800    | 0.962 |
-| 89 vs 89   | 0.916    | 0.972 |
-| 89 vs 439  | 0.871    | 0.944 |
+| 20 vs 20   | 0.865    | 0.855 |
+| 89 vs 89   | 0.926    | 0.976 |
+| 89 vs 439  | 0.901    | 0.948 |
 
 ---
 
 ### Random Forest + Haralick Features
-
 | Experiment | Accuracy | AUC   |
 | ---------- | -------- | ----- |
-| 20 vs 20   | 0.950    | 0.950 |
-| 89 vs 89   | 0.882    | 0.955 |
-| 89 vs 439  | 0.888    | 0.914 |
+| 20 vs 20   | 0.950    | 0.968 |
+| 89 vs 89   | 0.897    | 0.966 |
+| 89 vs 439  | 0.883    | 0.908 |
 
 ---
 
 ### SVM + Haralick Features
-
 | Experiment | Accuracy | AUC   |
 | ---------- | -------- | ----- |
-| 20 vs 20   | 0.925    | 0.988 |
-| 89 vs 89   | 0.933    | 0.983 |
-| 89 vs 439  | 0.898    | 0.948 |
+| 20 vs 20   | 0.920    | 0.886 |
+| 89 vs 89   | 0.947    | 0.986 |
+| 89 vs 439  | 0.887    | 0.945 |
 
 ---
 
-# 400x Magnification
+## 400x Magnification
 
 ### Random Forest + Basic Features
-
 | Experiment | Accuracy | AUC   |
 | ---------- | -------- | ----- |
-| 20 vs 20   | 0.900    | 0.894 |
-| 201 vs 201 | 0.804    | 0.892 |
-| 201 vs 495 | 0.800    | 0.814 |
+| 20 vs 20   | 0.910    | 0.966 |
+| 201 vs 201 | 0.801    | 0.889 |
+| 201 vs 495 | 0.805    | 0.816 |
 
 ---
 
 ### SVM + Basic Features
-
 | Experiment | Accuracy | AUC   |
 | ---------- | -------- | ----- |
-| 20 vs 20   | 0.850    | 0.950 |
-| 201 vs 201 | 0.833    | 0.906 |
-| 201 vs 495 | 0.777    | 0.857 |
+| 20 vs 20   | 0.835    | 0.909 |
+| 201 vs 201 | 0.845    | 0.918 |
+| 201 vs 495 | 0.838    | 0.895 |
 
 ---
 
 ### Random Forest + Haralick Features
-
 | Experiment | Accuracy | AUC   |
 | ---------- | -------- | ----- |
-| 20 vs 20   | 0.875    | 0.912 |
-| 201 vs 201 | 0.806    | 0.884 |
-| 201 vs 495 | 0.805    | 0.847 |
+| 20 vs 20   | 0.890    | 0.959 |
+| 201 vs 201 | 0.805    | 0.890 |
+| 201 vs 495 | 0.807    | 0.840 |
 
 ---
 
 ### SVM + Haralick Features
-
 | Experiment | Accuracy | AUC   |
 | ---------- | -------- | ----- |
-| 20 vs 20   | 0.900    | 0.962 |
-| 201 vs 201 | 0.841    | 0.905 |
-| 201 vs 495 | 0.795    | 0.872 |
+| 20 vs 20   | 0.875    | 0.930 |
+| 201 vs 201 | 0.850    | 0.916 |
+| 201 vs 495 | 0.851    | 0.900 |
 
----
 
-# Observations
+## Statistical Testing
 
-## Key Findings
+### SVM vs RF (Full 100x Dataset)
+| Metric   | p-value    |
+| -------- | ---------- |
+| Accuracy | 0.00015    |
+| AUC      | < 0.000001 |
+| PR-AUC   | < 0.000001 |
+| F1-score | 0.0115     |
+| MCC      | < 0.000001 |
 
+This suggests SVM significantly outperformed RF on the full 100x dataset.
+
+### Haralick vs Non-Haralick (SVM Full 100x)
+No statistically significant improvement was observed despite slight metric increases.
+
+This suggests:
+* LBP already captured substantial texture information
+* Haralick features added limited complementary information
+
+#  Key Findings
 * SVM generally performed better than Random Forest.
 * Haralick texture features improved overall performance.
 * Balanced datasets produced more reliable specificity.
 * Small datasets produced inflated accuracies due to overfitting.
 * Dataset imbalance increased sensitivity while reducing specificity.
 * 100x magnification generally achieved better performance than 400x.
+* SVM significantly outperformed RF statistically on the full 100x dataset.
 
 # Limitations
-
 - Dataset imbalance affects specificity in some experiments
 - No patient-wise splitting was available in the dataset
 - Classical handcrafted features may not capture all tissue morphology patterns
 - Small datasets may produce optimistic performance estimates due to overfitting.
+- External validation dataset was not available
 
-Date Updated: 13-05-2026
+# Note
+While AI assistance was used for debugging, iteration, and development support, all:
+* experiments
+* validations
+* debugging decisions
+* statistical analyses
+* interpretations
+* pipeline modifications
+
+were actively performed, verified, and understood during development.
+
+---
+
+### *If you use this project, please cite the original dataset creators.*
+
+---
+
+Date Updated: 15-05-2026
