@@ -1,13 +1,12 @@
-import os
-import numpy as np
 import pandas as pd
 from scipy.stats import ttest_rel, wilcoxon
+from src.statistics_utils import verify_same_splits
 
 def load_fold_metric(results_dir, metric="accuracy"):
     df = pd.read_csv(f"{results_dir}/fold_metrics.csv")
     return df.sort_values("fold")[metric].values
 
-def compare_experiments(exp1_dir, exp2_dir, metric="accuracy"):
+def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric="accuracy"):
     a = load_fold_metric(exp1_dir, metric)
     b = load_fold_metric(exp2_dir, metric)
 
@@ -38,35 +37,16 @@ def compare_experiments(exp1_dir, exp2_dir, metric="accuracy"):
     print(f"Effect size (Cohen's d approximation): {effect_size:.4f}")
 
     return {
+        "comparison": comparison_name,
+        "experiment_1": exp1_dir,
+        "experiment_2": exp2_dir,
         "metric": metric,
         "paired_t_stat": t_stat,
         "paired_t_p": t_p,
         "wilcoxon_stat": w_stat,
         "wilcoxon_p": w_p,
+        "effect_size": effect_size,
     }
-
-def verify_same_splits(exp1_dir, exp2_dir, n_folds=25):
-
-    for fold in range(1, n_folds + 1):
-
-        exp1_test = np.load(
-            os.path.join(
-                exp1_dir,
-                f"test_idx_fold_{fold}.npy"
-            )
-        )
-
-        exp2_test = np.load(
-            os.path.join(
-                exp2_dir,
-                f"test_idx_fold_{fold}.npy"
-            )
-        )
-
-        if not np.array_equal(exp1_test, exp2_test):
-            return False
-
-    return True
 
 if __name__ == "__main__":
 
@@ -79,25 +59,57 @@ if __name__ == "__main__":
     ]
     
     experiment_pairs = [
-        (
-        "results/svm_full_100x", 
-        "results/rf_full_100x", 
-        ),
-        (
-        "results/svm_haralick_full_100x", 
+
+    # MODEL COMPARISON
+    (
         "results/svm_full_100x",
-        )
+        "results/rf_full_100x",
+        "model_comparison_100x",
+    ),
+
+    (
+        "results/svm_full_400x",
+        "results/rf_full_400x",
+        "model_comparison_400x",
+    ),
+
+    # HARALICK EFFECT
+    (
+        "results/svm_haralick_full_100x",
+        "results/svm_full_100x",
+        "haralick_effect_svm_100x",
+    ),
+
+    (
+        "results/rf_haralick_full_100x",
+        "results/rf_full_100x",
+        "haralick_effect_rf_100x",
+    ),
+
+    # MAGNIFICATION EFFECT
+    (
+        "results/svm_full_100x",
+        "results/svm_full_400x",
+        "magnification_effect_svm",
+    ),
+
+    (
+        "results/rf_full_100x",
+        "results/rf_full_400x",
+        "magnification_effect_rf",
+    ),
     ]
 
     # RESULTS
     results = []
 
-    for exp1, exp2 in experiment_pairs:
+    for exp1, exp2, comparison_name in experiment_pairs:
         for metric in metrics:
 
                 result = compare_experiments(
                     exp1,
                     exp2,
+                    comparison_name,
                     metric=metric,
                 )
 

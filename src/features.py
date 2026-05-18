@@ -1,6 +1,10 @@
-import numpy as np
 import cv2
-from skimage.feature import local_binary_pattern, graycomatrix, graycoprops
+import numpy as np
+from skimage.feature import(
+    local_binary_pattern, 
+    graycomatrix, 
+    graycoprops,
+)
 
 BASE_FEATURE_NAMES = [
     "mean_r",
@@ -66,21 +70,35 @@ def extract_lbp_features(img, mask):
 def extract_haralick_features(img, mask):
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
-    masked_gray = gray.copy()
-    masked_gray[mask == 0] = 0
+    # Find tissue region
+    rows = np.any(mask > 0, axis=1)
+    cols = np.any(mask > 0, axis=0)
+
+    if not rows.any() or not cols.any():
+        return [0.0, 0.0, 0.0, 0.0]
+
+    rmin, rmax = np.where(rows)[0][[0, -1]]
+    cmin, cmax = np.where(cols)[0][[0, -1]]
+
+    tissue_gray = gray[rmin:rmax + 1, cmin:cmax + 1]
+
+    # Reduce gray levels to stabilize GLCM
+    tissue_gray = (tissue_gray // 16).astype(np.uint8)
 
     glcm = graycomatrix(
-        masked_gray,
+        tissue_gray,
         distances=[1],
-        angles=[0],
-        levels=256,
+        angles=[0, np.pi/4, np.pi/2, 3*np.pi/4],
+        levels=16,
         symmetric=True,
         normed=True,
     )
 
     features = []
+
     for prop in ["contrast", "correlation", "energy", "homogeneity"]:
-        features.append(float(graycoprops(glcm, prop)[0, 0]))
+        value = graycoprops(glcm, prop).mean()
+        features.append(float(value))
 
     return features
 

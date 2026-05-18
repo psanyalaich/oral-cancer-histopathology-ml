@@ -1,229 +1,100 @@
-# experiment configurations
+from itertools import product
 
-EXPERIMENTS = [
+# configurations
+MODELS = ["rf", "svm"]
+MAGNIFICATIONS = ["100x", "400x",]
+HARALICK_OPTIONS = [False, True,]
+DATASET_CONFIGS = {
+    "100x": [
+        ("20img", 20, 20),
+        ("89img", 89, 89),
+        ("full", 89, 439),
+    ],
 
-    # 100x RF
-    {
-        "name": "rf_20img_100x",
-        "model": "rf",
-        "haralick": False,
-        "magnification": "100x",
-        "num_normal": 20,
-        "num_tumour": 20,
-    },
+    "400x": [
+        ("20img", 20, 20),
+        ("201img", 201, 201),
+        ("full", 201, 495),
+    ],
+}
 
-    {
-        "name": "rf_89img_100x",
-        "model": "rf",
-        "haralick": False,
-        "magnification": "100x",
-        "num_normal": 89,
-        "num_tumour": 89,
-    },
+# experiment generator
+def generate_experiment_name(
+    model,
+    haralick,
+    dataset_name,
+    magnification,
+    ):
+    
+    parts = [model]
 
-    {
-        "name": "rf_full_100x",
-        "model": "rf",
-        "haralick": False,
-        "magnification": "100x",
-        "num_normal": 89,
-        "num_tumour": 439,
-    },
+    if haralick:
+        parts.append("haralick")
 
-    # 100x SVM
-    {
-        "name": "svm_20img_100x",
-        "model": "svm",
-        "haralick": False,
-        "magnification": "100x",
-        "num_normal": 20,
-        "num_tumour": 20,
-    },
+    parts.extend([
+        dataset_name,
+        magnification
+    ])
 
-    {
-        "name": "svm_89img_100x",
-        "model": "svm",
-        "haralick": False,
-        "magnification": "100x",
-        "num_normal": 89,
-        "num_tumour": 89,
-    },
+    return "_".join(parts)
 
-    {
-        "name": "svm_full_100x",
-        "model": "svm",
-        "haralick": False,
-        "magnification": "100x",
-        "num_normal": 89,
-        "num_tumour": 439,
-    },
+def generate_experiments():
+    experiments = []
 
-    # 100x RF HARALICK
-    {
-        "name": "rf_haralick_20img_100x",
-        "model": "rf",
-        "haralick": True,
-        "magnification": "100x",
-        "num_normal": 20,
-        "num_tumour": 20,
-    },
+    for model, magnification, haralick in product(
+        MODELS,
+        MAGNIFICATIONS,
+        HARALICK_OPTIONS,
+    ):
 
-    {
-        "name": "rf_haralick_89img_100x",
-        "model": "rf",
-        "haralick": True,
-        "magnification": "100x",
-        "num_normal": 89,
-        "num_tumour": 89,
-    },
+        datasets = DATASET_CONFIGS[magnification]
 
-    {
-        "name": "rf_haralick_full_100x",
-        "model": "rf",
-        "haralick": True,
-        "magnification": "100x",
-        "num_normal": 89,
-        "num_tumour": 439,
-    },
+        for dataset_name, num_normal, num_tumour in datasets:
+            experiment = {
+                "name": generate_experiment_name(
+                    model,
+                    haralick,
+                    dataset_name,
+                    magnification,
+                ),
 
-    # 100x SVM HARALICK
-    {
-        "name": "svm_haralick_20img_100x",
-        "model": "svm",
-        "haralick": True,
-        "magnification": "100x",
-        "num_normal": 20,
-        "num_tumour": 20,
-    },
+                "model": model,
+                "haralick": haralick,
+                "magnification": magnification,
+                "num_normal": num_normal,
+                "num_tumour": num_tumour,
+            }
 
-    {
-        "name": "svm_haralick_89img_100x",
-        "model": "svm",
-        "haralick": True,
-        "magnification": "100x",
-        "num_normal": 89,
-        "num_tumour": 89,
-    },
+            experiments.append(experiment)
+    return experiments
 
-    {
-        "name": "svm_haralick_full_100x",
-        "model": "svm",
-        "haralick": True,
-        "magnification": "100x",
-        "num_normal": 89,
-        "num_tumour": 439,
-    },
+def validate_experiments(experiments):
+    required_keys = {
+        "name",
+        "model",
+        "haralick",
+        "magnification",
+        "num_normal",
+        "num_tumour",
+    }
 
-    # 400x RF
-    {
-        "name": "rf_20img_400x",
-        "model": "rf",
-        "haralick": False,
-        "magnification": "400x",
-        "num_normal": 20,
-        "num_tumour": 20,
-    },
+    names = set()
 
-    {
-        "name": "rf_201img_400x",
-        "model": "rf",
-        "haralick": False,
-        "magnification": "400x",
-        "num_normal": 201,
-        "num_tumour": 201,
-    },
+    for exp in experiments:
+        # missing keys
+        missing = required_keys - exp.keys()
+        assert not missing, \
+            f"Missing keys: {missing}"
+        # duplicate names
+        assert exp["name"] not in names, \
+            f"Duplicate experiment name: {exp['name']}"
+        names.add(exp["name"])
+        # basic checks
+        assert exp["num_normal"] > 0
+        assert exp["num_tumour"] > 0
 
-    {
-        "name": "rf_full_400x",
-        "model": "rf",
-        "haralick": False,
-        "magnification": "400x",
-        "num_normal": 201,
-        "num_tumour": 495,
-    },
+    print("All experiments validated!")
 
-    # 400x SVM
-    {
-        "name": "svm_20img_400x",
-        "model": "svm",
-        "haralick": False,
-        "magnification": "400x",
-        "num_normal": 20,
-        "num_tumour": 20,
-    },
-
-    {
-        "name": "svm_201img_400x",
-        "model": "svm",
-        "haralick": False,
-        "magnification": "400x",
-        "num_normal": 201,
-        "num_tumour": 201,
-    },
-
-    {
-        "name": "svm_full_400x",
-        "model": "svm",
-        "haralick": False,
-        "magnification": "400x",
-        "num_normal": 201,
-        "num_tumour": 495,
-    },
-
-    # 400x RF HARALICK
-    {
-        "name": "rf_haralick_20img_400x",
-        "model": "rf",
-        "haralick": True,
-        "magnification": "400x",
-        "num_normal": 20,
-        "num_tumour": 20,
-    },
-
-    {
-        "name": "rf_haralick_201img_400x",
-        "model": "rf",
-        "haralick": True,
-        "magnification": "400x",
-        "num_normal": 201,
-        "num_tumour": 201,
-    },
-
-    {
-        "name": "rf_haralick_full_400x",
-        "model": "rf",
-        "haralick": True,
-        "magnification": "400x",
-        "num_normal": 201,
-        "num_tumour": 495,
-    },
-
-    # 400x SVM HARALICK
-    {
-        "name": "svm_haralick_20img_400x",
-        "model": "svm",
-        "haralick": True,
-        "magnification": "400x",
-        "num_normal": 20,
-        "num_tumour": 20,
-    },
-
-    {
-        "name": "svm_haralick_201img_400x",
-        "model": "svm",
-        "haralick": True,
-        "magnification": "400x",
-        "num_normal": 201,
-        "num_tumour": 201,
-    },
-
-    {
-        "name": "svm_haralick_full_400x",
-        "model": "svm",
-        "haralick": True,
-        "magnification": "400x",
-        "num_normal": 201,
-        "num_tumour": 495,
-    },
-
-]
+# final experiment list
+EXPERIMENTS = generate_experiments()
+validate_experiments(EXPERIMENTS)

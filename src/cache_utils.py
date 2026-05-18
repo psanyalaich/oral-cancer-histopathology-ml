@@ -1,0 +1,50 @@
+import pickle
+from pathlib import Path
+from dataset import build_dataset
+
+CACHE_VERSION = "v1"
+
+def get_or_cache_dataset(
+    magnification,
+    num_normal,
+    num_tumour,
+    use_haralick,
+    cache_dir="feature_cache",
+    ):
+
+    key = (
+        f"{CACHE_VERSION}_"
+        f"{magnification}_"
+        f"{num_normal}_"
+        f"{num_tumour}_"
+        f"haralick_{use_haralick}"
+        )
+
+    cache_path = Path(cache_dir) / f"{key}.pkl"
+
+    if cache_path.exists():
+
+        print(f"Loading cached dataset: {cache_path}")
+
+        with open(cache_path, "rb") as f:
+            return pickle.load(f)
+
+    print(f"Building dataset and caching: {key}")
+
+    X, y, used_files, image_paths = build_dataset(
+        magnification=magnification,
+        num_normal=num_normal,
+        num_tumour=num_tumour,
+        use_haralick=use_haralick,
+        )
+
+    cache_path.parent.mkdir(exist_ok=True)
+
+    with open(cache_path, "wb") as f:
+        pickle.dump(
+            (X, y, used_files, image_paths),
+            f,
+            protocol=pickle.HIGHEST_PROTOCOL,
+        )
+
+    return X, y, used_files, image_paths

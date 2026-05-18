@@ -18,20 +18,31 @@ def _list_image_files(folder):
         ext = os.path.splitext(name)[1].lower()
         if ext in IMAGE_EXTENSIONS:
             files.append(name)
-
     return files
 
-def _limit_files(files, limit):
-    if limit is None:
+def _limit_files(files, limit, seed=42):
+    if limit is None or limit >= len(files):
         return files
-    return files[:limit]
+
+    rng = np.random.default_rng(seed)
+
+    selected_indices = rng.choice(
+        len(files),
+        size=limit,
+        replace=False
+        )
+
+    selected_indices = sorted(selected_indices)
+
+    return [files[i] for i in selected_indices]
 
 def build_dataset(
     magnification="100x",
     num_normal=None,
     num_tumour=None,
     use_haralick=False,
-):
+    ):
+    
     normal_dir = f"data/{magnification}/normal"
     tumour_dir = f"data/{magnification}/tumour"
 
