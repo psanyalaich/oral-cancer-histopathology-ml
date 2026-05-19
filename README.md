@@ -108,6 +108,8 @@ A tissue mask is generated using:
 
 This helps remove background regions and focuses feature extraction on tissue regions.
 
+Images with very low tissue coverage were excluded from texture feature computation using a minimum tissue-area threshold.
+
 # Feature Extraction
 The machine learning models do not directly analyze raw images.
 
@@ -145,6 +147,8 @@ LBP captures:
 
 ## 3. Haralick Texture Features
 Gray-Level Co-occurrence Matrix (GLCM) features were extracted.
+
+GLCM features were computed across multiple orientations (0°, 45°, 90°, and 135°) and averaged to reduce directional bias in texture analysis.
 
 Features used:
 * contrast
@@ -307,6 +311,7 @@ To improve reproducibility and fair model comparison:
 - Small datasets may produce optimistic performance estimates due to overfitting.
 - Hyperparameter tuning on very small datasets may be unstable because inner validation folds contain few samples.
 - External validation dataset was not available
+- No stain normalization was applied; therefore, color-based features may partially reflect scanner and staining variability specific to the acquisition setup.
 
 ### *If you use this project, please cite the original dataset creators.*
 
