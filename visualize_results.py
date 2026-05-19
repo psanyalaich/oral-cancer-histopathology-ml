@@ -13,7 +13,14 @@ from sklearn.metrics import (
     average_precision_score
 )
 
-def plot_roc_curve(y_true, y_prob, save_path, csv_path=None):
+def plot_roc_curve(
+        y_true, 
+        y_prob, 
+        save_path, 
+        pooled_auc=None,
+        csv_path=None,
+        ):
+    
     save_dir = os.path.dirname(save_path)
     if save_dir:
         os.makedirs(save_dir, exist_ok=True)
@@ -64,7 +71,7 @@ def plot_pr_curve(y_true, y_prob, save_path, csv_path=None):
 
         pr_df = pd.DataFrame({
             "precision": precision,
-            "recall": recall,
+            "sensitivity": recall,
             "threshold": threshold_array,
         })
 
@@ -75,7 +82,7 @@ def plot_pr_curve(y_true, y_prob, save_path, csv_path=None):
         
     plt.figure(figsize=(6, 6))
     plt.plot(recall, precision, label=f"PR-AUC = {pr_auc:.3f}")
-    plt.xlabel("Recall")
+    plt.xlabel("sensitivity")
     plt.ylabel("Precision")
     plt.title("Precision-Recall Curve")
     plt.legend()

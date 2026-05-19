@@ -29,7 +29,6 @@ def compute_all_metrics(y_true, y_pred, y_prob):
         "auc": auc,
         "pr_auc": pr_auc,
         "precision": precision,
-        "recall": recall,
         "f1_score": f1,
         "sensitivity": sensitivity,
         "specificity": specificity,

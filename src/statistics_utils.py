@@ -2,14 +2,30 @@ import os
 import numpy as np
 from scipy.stats import t
 
-def confidence_interval(values, confidence=0.95):
+def confidence_interval_corrected(
+    values: np.ndarray,
+    n_test: int,
+    confidence: float = 0.95,
+    ):
+
     values = np.asarray(values)
 
     n = len(values)
-    mean = np.mean(values)
-    sem = values.std(ddof=1) / np.sqrt(n)
 
-    margin = sem * t.ppf((1 + confidence) / 2, n - 1)
+    mean = np.mean(values)
+    std = values.std(ddof=1)
+
+    # Correlation approximation
+    rho = 1.0 / n_test
+
+    corrected_se = std * np.sqrt(
+        (1.0 / n) + (rho / (1.0 - rho))
+    )
+
+    margin = corrected_se * t.ppf(
+        (1 + confidence) / 2,
+        n - 1
+    )
 
     return (
         mean,

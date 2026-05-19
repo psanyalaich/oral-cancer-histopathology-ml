@@ -1,10 +1,42 @@
+import os
+import numpy as np
 import pandas as pd
-from scipy.stats import ttest_rel, wilcoxon
+from scipy.stats import t, wilcoxon
 from src.statistics_utils import verify_same_splits
 
 def load_fold_metric(results_dir, metric="accuracy"):
     df = pd.read_csv(f"{results_dir}/fold_metrics.csv")
     return df.sort_values("fold")[metric].values
+
+def paired_ttest_corrected(
+    a: np.ndarray,
+    b: np.ndarray,
+    n_test: int,
+    ):
+    
+    diff = np.asarray(a) - np.asarray(b)
+
+    n = len(diff)
+
+    mean_diff = diff.mean()
+    std_diff = diff.std(ddof=1)
+
+    if std_diff == 0:
+        return 0.0, 1.0
+
+    rho = 1.0 / n_test
+
+    corrected_se = std_diff * np.sqrt(
+        (1.0 / n) + (rho / (1.0 - rho))
+    )
+
+    t_stat = mean_diff / corrected_se
+
+    p_val = 2 * (
+        1 - t.cdf(abs(t_stat), df=n - 1)
+    )
+
+    return t_stat, p_val
 
 def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric="accuracy"):
     a = load_fold_metric(exp1_dir, metric)
@@ -19,10 +51,24 @@ def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric="accuracy"):
             "Paired statistical testing is invalid."
         )
     
-    t_stat, t_p = ttest_rel(a, b)
-    w_stat, w_p = wilcoxon(a, b)
+    n_test = len(
+        np.load(
+            os.path.join(exp1_dir, "test_idx_fold_1.npy")
+        )
+    )
+
+    t_stat, t_p = paired_ttest_corrected(
+        a,
+        b,
+        n_test=n_test,
+    )
 
     diff = a - b
+
+    if np.allclose(diff, 0):
+        w_stat, w_p = 0.0, 1.0
+    else:
+        w_stat, w_p = wilcoxon(a, b)
 
     if diff.std(ddof=1) == 0:
         effect_size = 0.0
@@ -30,9 +76,12 @@ def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric="accuracy"):
         effect_size = diff.mean() / diff.std(ddof=1)
 
     print(f"\nMetric: {metric}")
-    print(f"{exp1_dir}: mean={a.mean():.4f}, std={a.std():.4f}")
-    print(f"{exp2_dir}: mean={b.mean():.4f}, std={b.std():.4f}")
-    print(f"Paired t-test: statistic={t_stat:.4f}, p={t_p:.6f}")
+    print(f"{exp1_dir}: mean={a.mean():.4f}, std={a.std(ddof=1):.4f}")
+    print(f"{exp2_dir}: mean={b.mean():.4f}, std={b.std(ddof=1):.4f}")
+    print(
+        f"Corrected paired t-test: "
+        f"statistic={t_stat:.4f}, p={t_p:.6f}"
+    )
     print(f"Wilcoxon test: statistic={w_stat:.4f}, p={w_p:.6f}")
     print(f"Effect size (Cohen's d approximation): {effect_size:.4f}")
 
@@ -115,7 +164,21 @@ if __name__ == "__main__":
 
                 results.append(result)
 
-    pd.DataFrame(results).to_csv(
+    results_df = pd.DataFrame(results)
+
+    n_tests = len(results_df)
+
+    results_df["paired_t_p_bonferroni"] = np.minimum(
+        results_df["paired_t_p"] * n_tests,
+        1.0,
+    )
+
+    results_df["wilcoxon_p_bonferroni"] = np.minimum(
+        results_df["wilcoxon_p"] * n_tests,
+        1.0,
+    )
+
+    results_df.to_csv(
         "statistical_tests.csv",
         index=False,
     )

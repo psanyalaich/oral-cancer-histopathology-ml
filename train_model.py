@@ -10,6 +10,7 @@ matplotlib.use("Agg")
 
 from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
+from sklearn.metrics import roc_auc_score
 from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV
@@ -114,16 +115,15 @@ def run_fold(
     if model_type == "rf":
 
         param_grid = {
-            "classifier__n_estimators": [100, 200],
-            "classifier__max_depth": [None, 10, 20],
-            "classifier__min_samples_split": [2, 5],
+            "classifier__n_estimators": [100],
+            "classifier__max_depth": [None, 10],
         }
 
     elif model_type == "svm":
 
         param_grid = {
-            "classifier__C": [0.1, 1, 10],
-            "classifier__gamma": ["scale", 0.01, 0.001],
+            "classifier__C": [0.1, 1],
+            "classifier__gamma": ["scale", 0.01],
         }
 
     grid = GridSearchCV(
@@ -336,9 +336,8 @@ def run_experiment(config):
         "auc",
         "pr_auc",
         "precision",
-        "recall",
-        "f1_score",
         "sensitivity",
+        "f1_score",
         "specificity",
         "mcc",
     ]:
@@ -412,7 +411,6 @@ def run_experiment(config):
             "auc",
             "pr_auc",
             "precision",
-            "recall",
             "f1_score",
             "sensitivity",
             "specificity",
@@ -462,14 +460,11 @@ def run_experiment(config):
             round(fold_df["precision"].mean(), 3),
             round(fold_df["precision"].std(), 3),
 
-            round(fold_df["recall"].mean(), 3),
-            round(fold_df["recall"].std(), 3),
+            round(fold_df["sensitivity"].mean(), 3),
+            round(fold_df["sensitivity"].std(), 3),
 
             round(fold_df["f1_score"].mean(), 3),
             round(fold_df["f1_score"].std(), 3),
-
-            round(fold_df["sensitivity"].mean(), 3),
-            round(fold_df["sensitivity"].std(), 3),
 
             round(fold_df["specificity"].mean(), 3),
             round(fold_df["specificity"].std(), 3),
@@ -481,11 +476,17 @@ def run_experiment(config):
             round(accuracy_ci_high, 3),
         ])
 
+    pooled_auc = roc_auc_score(
+        all_y_test,
+        all_y_prob,
+    )
+
     # ROC CURVE
     plot_roc_curve(
         all_y_test,
         all_y_prob,
         os.path.join(RESULTS_DIR, "roc_curve.png"),
+        pooled_auc=pooled_auc,
         csv_path=os.path.join(
             RESULTS_DIR,
             "roc_curve_data.csv",
@@ -609,9 +610,6 @@ if not os.path.exists(SUMMARY_CSV):
 
             "precision_mean",
             "precision_std",
-
-            "recall_mean",
-            "recall_std",
 
             "f1_score_mean",
             "f1_score_std",

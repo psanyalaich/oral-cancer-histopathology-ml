@@ -6,6 +6,8 @@
 
 A classical machine learning pipeline for Oral Squamous Cell Carcinoma (OSCC) histopathological image classification using handcrafted texture and color features.
 
+The pipeline was designed as a reproducible experimental framework for histopathology-based cancer classification research, with emphasis on statistically rigorous evaluation, reproducible experimentation, and interpretable classical machine learning methods.
+
 This project evaluates:
 
 - Random Forest vs Support Vector Machine (SVM)
@@ -14,19 +16,18 @@ This project evaluates:
 - 100x vs 400x histopathology magnifications
 - Statistical significance of model performance differences
 
-The pipeline was designed as a reproducible experimental framework for histopathology-based cancer classification research.
-
 ## Highlights
 - Automated experiment pipeline
 - 24 configurable experiments
-- Cross-validation evaluation
-- ROC curve generation
-- Feature importance visualization
+- Repeated stratified cross-validation
+- Nested hyperparameter tuning using GridSearchCV
+- ROC and Precision-Recall curve generation
+- Feature importance and SHAP visualization
 - Support for Haralick texture analysis
 - Statistical significance testing
 - Confidence interval computation
+- Reproducible dataset splits and random seeds
 - Config-driven experiment system
-- Reproducible random seed setup
 
 # Installation
 - Clone Repository: 
@@ -84,7 +85,7 @@ Dataset description:
 
 Fixed random seeds were used throughout the project: ```random_state = 42```
 
-This was applied to the folloring to ensure reproducible experimental results:
+This was applied to the following to ensure reproducible experimental results:
 - Random Forest
 - SVM
 - Stratified K-Fold splitting
@@ -184,7 +185,18 @@ SVC(
 ```
 
 # Evaluation Strategy
-- **Cross Validation**: 25-fold stratified cross validation was used.
+
+## Repeated Cross-Validation
+The experiments used 25 repeated stratified train/test splits.
+
+Pre-generated dataset splits were reused across experiments to ensure fair paired statistical comparison between models.
+
+## Nested Hyperparameter Tuning
+Hyperparameters were optimized inside each training fold using GridSearchCV with stratified inner cross-validation.
+
+This prevents information leakage between training and evaluation data.
+
+A small inner cross-validation split count was used because some experiments contained limited training samples.
 
 ## Metrics
 The following metrics were computed:
@@ -192,32 +204,43 @@ The following metrics were computed:
 * AUC
 * PR-AUC
 * Precision
-* Recall/Sensitivity
+* Sensitivity
 * Specificity
 * F1-score
 * MCC
 
+Sensitivity was used instead of recall because both metrics represent the same quantity:
+
+TP / (TP + FN)
+
+Sensitivity terminology was retained because the project is focused on medical image classification.
+
 ROC curves and confusion matrices were also generated for each experiment.
 
+Mean ± standard deviation values in the summary tables were computed from fold-level metrics.
+
+ROC curve AUC values were computed using pooled predictions aggregated across all folds.
+
 ## Statistical Analysis
+
 Additional statistical testing was performed using:
-* Paired t-test
+* Nadeau-Bengio corrected paired t-test
 * Wilcoxon signed-rank test
 * Cohen's d effect size
 
-Purpose:
-* verify whether performance differences are statistically significant
-* avoid relying only on average accuracy values
+The corrected paired t-test was used because the same cross-validation splits were reused across experiments.
+
+Bonferroni-corrected p-values were computed to reduce false positives from multiple statistical comparisons.
 
 # Output Files
 
 For each experiment, the pipeline automatically generates:
 - `metrics.txt`
 - `fold_metrics.csv`
-- `predictions.csv`
+- `fold_predictions.csv`
 - `roc_curve.png`
 - `confusion_matrix.png`
-- `feature_importance.png` (Random Forest only)'
+- `feature_importance.png` (Random Forest only)
 
 Stored results:
 * All experiment outputs are stored inside: ```results/<experiment_name>/```
@@ -263,16 +286,26 @@ This suggests:
 * SVM generally performed better than Random Forest.
 * Haralick texture features improved overall performance.
 * Balanced datasets produced more reliable specificity.
-* Small datasets produced inflated accuracies due to overfitting.
+* Small datasets sometimes produced unstable or optimistic performance estimates.
 * Dataset imbalance increased sensitivity while reducing specificity.
 * 100x magnification generally achieved better performance than 400x.
 * SVM significantly outperformed RF statistically on the full 100x dataset.
+
+# Reproducibility and Experimental Integrity
+
+To improve reproducibility and fair model comparison:
+- identical dataset splits were reused across paired experiments
+- dataset manifests were saved for each experiment
+- experiment configurations were stored as JSON files
+- fold-level predictions and metrics were saved
+- statistical comparison was only performed after verifying matching splits
 
 # Limitations
 - Dataset imbalance affects specificity in some experiments
 - No patient-wise splitting was available in the dataset
 - Classical handcrafted features may not capture all tissue morphology patterns
 - Small datasets may produce optimistic performance estimates due to overfitting.
+- Hyperparameter tuning on very small datasets may be unstable because inner validation folds contain few samples.
 - External validation dataset was not available
 
 ### *If you use this project, please cite the original dataset creators.*
