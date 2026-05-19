@@ -18,7 +18,7 @@ The pipeline was designed as a reproducible experimental framework for histopath
 
 ## Highlights
 - Automated experiment pipeline
-- 24 reproducible experiments
+- 24 configurable experiments
 - Cross-validation evaluation
 - ROC curve generation
 - Feature importance visualization
@@ -27,48 +27,6 @@ The pipeline was designed as a reproducible experimental framework for histopath
 - Confidence interval computation
 - Config-driven experiment system
 - Reproducible random seed setup
-
-# Project Structure
-```text
-oral-cancer-histopathology-ml/
-│
-├── data/                          # Histopathology image dataset
-│
-├── results/                       # Experiment outputs
-│   ├── experiment_name/
-│   │   ├── metrics.txt
-│   │   ├── roc_curve.png
-│   │   ├── confusion_matrix.png
-│   │   ├── feature_importance.png
-│   │   └── fold_metrics.csv
-│
-├── cv_splits/                     # Saved reproducible train/test splits
-├── cv_splits_100x/                # Additional split sets
-│
-├── src/
-│   ├── preprocessing.py           # Tissue segmentation + image loading
-│   ├── features.py                # Feature extraction
-│   ├── metrics_utils.py           # Evaluation metrics
-│   ├── statistics_utils.py        # Statistical testing utilities
-│   ├── analysis_plots.py          # Plot generation
-│   └── explainability.py          # Feature importance / explainability
-│
-├── dataset.py                     # Dataset construction
-├── experiments.py                 # Experiment definitions
-├── generate_splits.py             # Generate CV splits
-├── verify_splits.py               # Validate split integrity
-├── train_model.py                 # Main training pipeline
-├── visualize_results.py           # Visualization runner
-├── stats_analysis.py              # Statistical comparison analysis
-├── test.py                        # Debug/testing script
-│
-├── results_summary.csv            # Aggregated experiment results
-├── statistical_tests.csv          # Statistical test outputs
-│
-├── requirements.txt
-├── README.md
-└── .gitignore
-```
 
 # Installation
 - Clone Repository: 
@@ -90,7 +48,7 @@ oral-cancer-histopathology-ml/
     - computes evaluation metrics
     - generates predictions
     - saves experiment outputs
-- To generate visualzation: ```python visualize_results.py```
+- To generate visualization: ```python visualize_results.py```
     - ROC curves
     - confusion matrices
     - feature importance plots
@@ -281,81 +239,6 @@ Stored results:
 ### Feature Importance - ```rf_haralick_20img_100x```
 ![Feature Importance](results/sample_outputs/feature_importance.png)
 
-## 100x Magnification
-
-### Random Forest + Basic Features
-| Experiment | Accuracy | AUC   |
-| ---------- | -------- | ----- |
-| 20 vs 20   | 0.930    | 0.961 |
-| 89 vs 89   | 0.876    | 0.952 |
-| 89 vs 439  | 0.867    | 0.896 |
-
----
-
-### SVM + Basic Features
-| Experiment | Accuracy | AUC   |
-| ---------- | -------- | ----- |
-| 20 vs 20   | 0.865    | 0.855 |
-| 89 vs 89   | 0.926    | 0.976 |
-| 89 vs 439  | 0.901    | 0.948 |
-
----
-
-### Random Forest + Haralick Features
-| Experiment | Accuracy | AUC   |
-| ---------- | -------- | ----- |
-| 20 vs 20   | 0.950    | 0.968 |
-| 89 vs 89   | 0.897    | 0.966 |
-| 89 vs 439  | 0.883    | 0.908 |
-
----
-
-### SVM + Haralick Features
-| Experiment | Accuracy | AUC   |
-| ---------- | -------- | ----- |
-| 20 vs 20   | 0.920    | 0.886 |
-| 89 vs 89   | 0.947    | 0.986 |
-| 89 vs 439  | 0.887    | 0.945 |
-
----
-
-## 400x Magnification
-
-### Random Forest + Basic Features
-| Experiment | Accuracy | AUC   |
-| ---------- | -------- | ----- |
-| 20 vs 20   | 0.910    | 0.966 |
-| 201 vs 201 | 0.801    | 0.889 |
-| 201 vs 495 | 0.805    | 0.816 |
-
----
-
-### SVM + Basic Features
-| Experiment | Accuracy | AUC   |
-| ---------- | -------- | ----- |
-| 20 vs 20   | 0.835    | 0.909 |
-| 201 vs 201 | 0.845    | 0.918 |
-| 201 vs 495 | 0.838    | 0.895 |
-
----
-
-### Random Forest + Haralick Features
-| Experiment | Accuracy | AUC   |
-| ---------- | -------- | ----- |
-| 20 vs 20   | 0.890    | 0.959 |
-| 201 vs 201 | 0.805    | 0.890 |
-| 201 vs 495 | 0.807    | 0.840 |
-
----
-
-### SVM + Haralick Features
-| Experiment | Accuracy | AUC   |
-| ---------- | -------- | ----- |
-| 20 vs 20   | 0.875    | 0.930 |
-| 201 vs 201 | 0.850    | 0.916 |
-| 201 vs 495 | 0.851    | 0.900 |
-
-
 ## Statistical Testing
 
 ### SVM vs RF (Full 100x Dataset)
@@ -392,21 +275,8 @@ This suggests:
 - Small datasets may produce optimistic performance estimates due to overfitting.
 - External validation dataset was not available
 
-# Note
-While AI assistance was used for debugging, iteration, and development support, all:
-* experiments
-* validations
-* debugging decisions
-* statistical analyses
-* interpretations
-* pipeline modifications
-
-were actively performed, verified, and understood during development.
-
----
-
 ### *If you use this project, please cite the original dataset creators.*
 
 ---
 
-Date Updated: 15-05-2026
+Date Updated: 19-05-2026
