@@ -32,6 +32,8 @@ HARALICK_FEATURE_NAMES = [
     "haralick_homogeneity",
 ]
 
+MIN_TISSUE_FRACTION = 0.05
+
 def get_feature_names(use_haralick=False):
     if use_haralick:
         return BASE_FEATURE_NAMES + HARALICK_FEATURE_NAMES
@@ -39,6 +41,7 @@ def get_feature_names(use_haralick=False):
 
 def extract_color_features(img, mask):
     features = []
+    
     tissue_pixels = mask > 0
 
     for channel in range(3):
@@ -54,6 +57,12 @@ def extract_color_features(img, mask):
 
 def extract_lbp_features(img, mask):
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+    tissue_fraction = np.mean(mask > 0)
+
+    if tissue_fraction < MIN_TISSUE_FRACTION:
+        return [0.0] * 10
+
     lbp = local_binary_pattern(gray, P=8, R=1, method="uniform")
 
     values = lbp[mask > 0]
@@ -70,17 +79,14 @@ def extract_lbp_features(img, mask):
 def extract_haralick_features(img, mask):
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
-    # Find tissue region
-    rows = np.any(mask > 0, axis=1)
-    cols = np.any(mask > 0, axis=0)
+    # Check tissue coverage
+    tissue_fraction = np.mean(mask > 0)
 
-    if not rows.any() or not cols.any():
+    if tissue_fraction < MIN_TISSUE_FRACTION:
         return [0.0, 0.0, 0.0, 0.0]
 
-    rmin, rmax = np.where(rows)[0][[0, -1]]
-    cmin, cmax = np.where(cols)[0][[0, -1]]
-
-    tissue_gray = gray[rmin:rmax + 1, cmin:cmax + 1]
+    tissue_gray = gray.copy()
+    tissue_gray[mask == 0] = 0
 
     # Reduce gray levels to stabilize GLCM
     tissue_gray = (tissue_gray // 16).astype(np.uint8)
