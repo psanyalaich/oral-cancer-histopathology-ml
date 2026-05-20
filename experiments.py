@@ -1,9 +1,20 @@
+# imports
 from itertools import product
 
 # configurations
 MODELS = ["rf", "svm"]
 MAGNIFICATIONS = ["100x", "400x",]
-HARALICK_OPTIONS = [False, True,]
+
+FEATURE_SETS = [
+    "color",
+    "lbp",
+    "haralick",
+    "color_lbp",
+    "color_haralick",
+    "lbp_haralick",
+    "all",
+]
+
 DATASET_CONFIGS = {
     "100x": [
         ("20img", 20, 20),
@@ -21,15 +32,18 @@ DATASET_CONFIGS = {
 # experiment generator
 def generate_experiment_name(
     model,
-    haralick,
+    feature_set,
     dataset_name,
     magnification,
+    use_scaling,
     ):
     
-    parts = [model]
+    parts = [
+        model,
+        "scaled" if use_scaling else "unscaled",
+    ]
 
-    if haralick:
-        parts.append("haralick")
+    parts.append(feature_set)
 
     parts.extend([
         dataset_name,
@@ -41,41 +55,53 @@ def generate_experiment_name(
 def generate_experiments():
     experiments = []
 
-    for model, magnification, haralick in product(
+    for model, magnification, feature_set in product(
         MODELS,
         MAGNIFICATIONS,
-        HARALICK_OPTIONS,
+        FEATURE_SETS,
     ):
+
+        if model == "rf":
+            scaling_configs = [False]
+
+        elif model == "svm":
+            scaling_configs = [True, False]
 
         datasets = DATASET_CONFIGS[magnification]
 
-        for dataset_name, num_normal, num_tumour in datasets:
-            experiment = {
-                "name": generate_experiment_name(
-                    model,
-                    haralick,
-                    dataset_name,
-                    magnification,
-                ),
+        for use_scaling in scaling_configs:
 
-                "model": model,
-                "haralick": haralick,
-                "magnification": magnification,
-                "num_normal": num_normal,
-                "num_tumour": num_tumour,
-            }
+            for dataset_name, num_normal, num_tumour in datasets:
 
-            experiments.append(experiment)
+                experiment = {
+                    "name": generate_experiment_name(
+                        model,
+                        feature_set,
+                        dataset_name,
+                        magnification,
+                        use_scaling,
+                    ),
+
+                    "model": model,
+                    "feature_set": feature_set,
+                    "magnification": magnification,
+                    "num_normal": num_normal,
+                    "num_tumour": num_tumour,
+                    "use_scaling": use_scaling,
+                }
+
+                experiments.append(experiment)
     return experiments
 
 def validate_experiments(experiments):
     required_keys = {
         "name",
         "model",
-        "haralick",
+        "feature_set",
         "magnification",
         "num_normal",
         "num_tumour",
+        "use_scaling",
     }
 
     names = set()

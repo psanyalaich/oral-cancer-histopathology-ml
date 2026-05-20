@@ -43,7 +43,7 @@ from visualize_results import (
 from experiments import EXPERIMENTS
 
 # MODEL
-def get_model(model_type):
+def get_model(model_type, use_scaling=True):
 
     if model_type == "rf":
         model = RandomForestClassifier(
@@ -69,10 +69,18 @@ def get_model(model_type):
         ])
 
     elif model_type == "svm":
-        pipeline = Pipeline([
-            ("scaler", StandardScaler()),
-            ("classifier", model),
-        ])
+        steps = []
+
+        if use_scaling:
+            steps.append(
+                ("scaler", StandardScaler())
+            )
+
+        steps.append(
+            ("classifier", model)
+        )
+
+        pipeline = Pipeline(steps)
 
     return pipeline
 
@@ -85,6 +93,8 @@ def run_fold(
     model_type,
     results_dir,
     experiment_name,
+    feature_names,
+    use_scaling,
     ):
 
     train_idx = np.load(
@@ -109,7 +119,10 @@ def run_fold(
 
     print(f"\nFold {fold}")
 
-    base_model = get_model(model_type)
+    base_model = get_model(
+        model_type,
+        use_scaling=use_scaling,
+    )
 
     # PARAM GRID
     if model_type == "rf":
@@ -183,6 +196,20 @@ def run_fold(
     print("Accuracy:", round(fold_metrics["accuracy"], 3))
     print("AUC:", round(fold_metrics["auc"], 3))
 
+    if model_type == "rf":
+
+        plot_permutation_importance(
+            clf,
+            X_test,
+            y_test,
+            feature_names,
+            os.path.join(
+                results_dir,
+                f"permutation_importance_fold_{fold}.png",
+                
+            ),
+        )
+
     plot_confusion_matrix(
         y_test,
         y_pred,
@@ -204,18 +231,17 @@ def run_fold(
             "best_cv_auc": grid.best_score_,
             **grid.best_params_,
         },
-        "last_X_test": X_test,
-        "last_y_test": y_test,
     }
 
 def run_experiment(config):
 
     EXPERIMENT_NAME = config["name"]
     MODEL_TYPE = config["model"]
-    USE_HARALICK = config["haralick"]
+    FEATURE_SET = config["feature_set"]
     MAGNIFICATION = config["magnification"]
     NUM_NORMAL = config["num_normal"]
     NUM_TUMOUR = config["num_tumour"]
+    USE_SCALING = config["use_scaling"]
 
     print("\n===================================")
     print("RUNNING:", EXPERIMENT_NAME)
@@ -235,7 +261,7 @@ def run_experiment(config):
         magnification=MAGNIFICATION,
         num_normal=NUM_NORMAL,
         num_tumour=NUM_TUMOUR,
-        use_haralick=USE_HARALICK,
+        feature_set=FEATURE_SET,
     )
 
     with open(
@@ -252,7 +278,7 @@ def run_experiment(config):
             indent=4,
         )
 
-    feature_names = get_feature_names(USE_HARALICK)
+    feature_names = get_feature_names(FEATURE_SET)
 
     plot_class_distribution(
         y,
@@ -304,6 +330,8 @@ def run_experiment(config):
                 model_type=MODEL_TYPE,
                 results_dir=RESULTS_DIR,
                 experiment_name=EXPERIMENT_NAME,
+                feature_names=feature_names,
+                use_scaling=USE_SCALING,
             )
 
             fold_rows.append(result["fold_row"])
@@ -315,9 +343,6 @@ def run_experiment(config):
             all_y_prob.extend(result["y_prob"])
 
             best_params_rows.append(result["best_params"])
-
-            last_X_test = result["last_X_test"]
-            last_y_test = result["last_y_test"]
 
         except Exception:
 
@@ -402,9 +427,10 @@ def run_experiment(config):
         f.write(f"Experiment: {EXPERIMENT_NAME}\n")
         f.write(f"Magnification: {MAGNIFICATION}\n")
         f.write(f"Model: {MODEL_TYPE}\n")
-        f.write(f"Use Haralick: {USE_HARALICK}\n")
+        f.write(f"Use Feature Set: {FEATURE_SET}\n")
         f.write(f"Normal images: {NUM_NORMAL}\n")
         f.write(f"Tumour images: {NUM_TUMOUR}\n\n")
+        f.write(f"Use Scaling: {USE_SCALING}\n")
 
         for metric in [
             "accuracy",
@@ -444,9 +470,10 @@ def run_experiment(config):
             EXPERIMENT_NAME,
             MODEL_TYPE,
             MAGNIFICATION,
-            USE_HARALICK,
+            FEATURE_SET,
             NUM_NORMAL,
             NUM_TUMOUR,
+            USE_SCALING,
 
             round(fold_df["accuracy"].mean(), 3),
             round(fold_df["accuracy"].std(), 3),
@@ -536,7 +563,7 @@ def run_experiment(config):
     # RF ANALYSIS
     if MODEL_TYPE == "rf":
 
-        final_rf = get_model("rf")
+        final_rf = get_model("rf", use_scaling=False)
         final_rf.fit(X, y)
 
         rf_model = final_rf.named_steps["classifier"]
@@ -570,17 +597,6 @@ def run_experiment(config):
             ),
         )
 
-        plot_permutation_importance(
-            final_rf,
-            last_X_test,
-            last_y_test,
-            feature_names,
-            os.path.join(
-                RESULTS_DIR,
-                "permutation_importance.png",
-            ),
-        )
-
 # SUMMARY CSV
 SUMMARY_CSV = "results_summary.csv"
 
@@ -595,9 +611,10 @@ if not os.path.exists(SUMMARY_CSV):
             "experiment",
             "model",
             "magnification",
-            "haralick",
+            "feature_set",
             "num_normal",
             "num_tumour",
+            "use_scaling",
 
             "accuracy_mean",
             "accuracy_std",

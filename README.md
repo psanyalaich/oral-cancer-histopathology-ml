@@ -1,5 +1,5 @@
 # Histopathology Image Classification using Classical Machine Learning
-![Python](https://img.shields.io/badge/Python-3.11-blue)
+![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-ML-orange)
 ![OpenCV](https://img.shields.io/badge/OpenCV-Image%20Processing-green)
 ![Status](https://img.shields.io/badge/Status-Research%20Project-success)
@@ -9,16 +9,18 @@ A classical machine learning pipeline for Oral Squamous Cell Carcinoma (OSCC) hi
 The pipeline was designed as a reproducible experimental framework for histopathology-based cancer classification research, with emphasis on statistically rigorous evaluation, reproducible experimentation, and interpretable classical machine learning methods.
 
 This project evaluates:
-
 - Random Forest vs Support Vector Machine (SVM)
-- Basic handcrafted features vs Haralick texture features
+- Systematic handcrafted feature ablation experiments
+- Color, LBP, and Haralick texture descriptors
 - Balanced vs imbalanced datasets
 - 100x vs 400x histopathology magnifications
+- Feature scaling effects for SVM models
 - Statistical significance of model performance differences
+- Reproducibility and experimental robustness in histopathology ML
 
 ## Highlights
 - Automated experiment pipeline
-- 24 configurable experiments
+- 126 configurable experiments
 - Repeated stratified cross-validation
 - Nested hyperparameter tuning using GridSearchCV
 - ROC and Precision-Recall curve generation
@@ -28,6 +30,11 @@ This project evaluates:
 - Confidence interval computation
 - Reproducible dataset splits and random seeds
 - Config-driven experiment system
+- Configurable feature ablation framework
+- Feature caching system for faster experimentation
+- Optional SVM feature scaling analysis
+- Segmentation robustness safeguards
+- SHAP and permutation importance visualization
 
 # Installation
 - Clone Repository: 
@@ -108,7 +115,14 @@ A tissue mask is generated using:
 
 This helps remove background regions and focuses feature extraction on tissue regions.
 
-Images with very low tissue coverage were excluded from texture feature computation using a minimum tissue-area threshold.
+Additional preprocessing safeguards were implemented to improve robustness:
+
+* dark-image rejection
+* connected-component noise removal
+* minimum tissue-area validation
+* excessive tissue-mask rejection
+
+These checks help reduce segmentation failures and unstable feature extraction caused by noisy or low-information images.
 
 # Feature Extraction
 The machine learning models do not directly analyze raw images.
@@ -118,6 +132,8 @@ Each image is converted into a numerical feature vector representing:
 * texture patterns
 * tissue heterogeneity
 * structural organization
+
+The framework also supports configurable feature subset experiments for systematic feature ablation analysis.
 
 ## 1. Color Features
 For each RGB channel:
@@ -146,9 +162,7 @@ LBP captures:
 
 
 ## 3. Haralick Texture Features
-Gray-Level Co-occurrence Matrix (GLCM) features were extracted.
-
-GLCM features were computed across multiple orientations (0°, 45°, 90°, and 135°) and averaged to reduce directional bias in texture analysis.
+Gray-Level Co-occurrence Matrix (GLCM) features were extracted from segmented tissue regions.
 
 Features used:
 * contrast
@@ -158,13 +172,36 @@ Features used:
 
 Total Haralick features: 4
 
+Additional safeguards were implemented for stable Haralick extraction:
+* tissue-region cropping
+* low-tissue rejection
+* sparse-mask filtering
+* gray-level quantization
+
+These steps help reduce unstable GLCM estimates caused by noisy background regions.
+
+## Feature Ablation Framework
+
+The pipeline supports multiple configurable feature subsets:
+
+| Feature Set | Included Features |
+|---|---|
+| `color` | RGB statistical features |
+| `lbp` | Local Binary Pattern features |
+| `haralick` | GLCM Haralick texture features |
+| `color_lbp` | Color + LBP |
+| `color_haralick` | Color + Haralick |
+| `lbp_haralick` | LBP + Haralick |
+| `all` | Color + LBP + Haralick |
+
+This allows controlled experiments to evaluate how different handcrafted feature families contribute to histopathology classification performance.
+
 # Machine Learning Models
 
 ## Random Forest
 GridSearchCV optimized:
 * number of estimators
 * maximum depth
-* minimum samples split
 
 ```python
 RandomForestClassifier(
@@ -177,7 +214,6 @@ RandomForestClassifier(
 GridSearchCV optimized:
 * C
 * gamma
-* kernel
 
 ```python
 SVC(
@@ -187,6 +223,8 @@ SVC(
     random_state=42
 )
 ```
+
+SVM experiments were performed both with and without feature standardization to evaluate scaling sensitivity of handcrafted descriptors.
 
 # Evaluation Strategy
 
@@ -230,9 +268,13 @@ ROC curve AUC values were computed using pooled predictions aggregated across al
 Additional statistical testing was performed using:
 * Nadeau-Bengio corrected paired t-test
 * Wilcoxon signed-rank test
+* Welch’s t-test
+* Mann-Whitney U test
 * Cohen's d effect size
 
-The corrected paired t-test was used because the same cross-validation splits were reused across experiments.
+Paired statistical tests were only applied when experiments reused identical cross-validation splits.
+
+Independent statistical tests were used for experiments involving different datasets or magnification settings.
 
 Bonferroni-corrected p-values were computed to reduce false positives from multiple statistical comparisons.
 
@@ -245,11 +287,27 @@ For each experiment, the pipeline automatically generates:
 - `roc_curve.png`
 - `confusion_matrix.png`
 - `feature_importance.png` (Random Forest only)
+- `permutation_importance.png`
+- `permutation_importance.csv`
+- `shap_summary.png`
+- `dataset_manifest.json`
+- `config.json`
 
 Stored results:
 * All experiment outputs are stored inside: ```results/<experiment_name>/```
 * A summary of all experiments is also stored in: ```results_summary.csv```
 * Statistical test outputs are stored in: ```statistical_tests.csv```
+
+## Dataset Feature Caching
+
+Extracted feature vectors are cached to disk to avoid repeated preprocessing and feature extraction across experiments.
+
+Cache keys are automatically generated using:
+* magnification
+* dataset size
+* feature configuration
+
+This substantially reduces runtime for large experimental grids.
 
 # Experiments Performed
 
@@ -286,9 +344,11 @@ This suggests:
 * LBP already captured substantial texture information
 * Haralick features added limited complementary information
 
-#  Key Findings
+# Key Findings
 * SVM generally performed better than Random Forest.
-* Haralick texture features improved overall performance.
+* Feature subset performance varied substantially across experiments.
+* Haralick texture features improved some configurations but not all.
+* Feature scaling improved SVM stability in several configurations.
 * Balanced datasets produced more reliable specificity.
 * Small datasets sometimes produced unstable or optimistic performance estimates.
 * Dataset imbalance increased sensitivity while reducing specificity.
@@ -303,6 +363,9 @@ To improve reproducibility and fair model comparison:
 - experiment configurations were stored as JSON files
 - fold-level predictions and metrics were saved
 - statistical comparison was only performed after verifying matching splits
+- feature extraction settings were stored with experiment outputs
+- cached datasets preserved preprocessing consistency
+- split files were pre-generated and reused across experiments
 
 # Limitations
 - Dataset imbalance affects specificity in some experiments
@@ -311,10 +374,13 @@ To improve reproducibility and fair model comparison:
 - Small datasets may produce optimistic performance estimates due to overfitting.
 - Hyperparameter tuning on very small datasets may be unstable because inner validation folds contain few samples.
 - External validation dataset was not available
-- No stain normalization was applied; therefore, color-based features may partially reflect scanner and staining variability specific to the acquisition setup.
-
-### *If you use this project, please cite the original dataset creators.*
+- No stain normalization was applied
+- Image-level splitting may still introduce hidden patient-level leakage
+- Patient-wise cross-validation could not be performed because patient IDs were unavailable
+- The dataset originates from a single acquisition source, which may limit generalization across scanners, staining protocols, and institutions.
 
 ---
+### *If you use this project, please cite the original dataset creators.*
+---
 
-Date Updated: 19-05-2026
+Date Updated: 20-05-2026

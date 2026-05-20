@@ -1,13 +1,23 @@
 import os
 import shap
-import numpy as np
 import matplotlib
+import numpy as np
+import pandas as pd
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from sklearn.inspection import permutation_importance
 
-def plot_permutation_importance(model, X, y, feature_names, save_path, n_repeats=10):
+def plot_permutation_importance(
+    model,
+    X,
+    y,
+    feature_names,
+    save_path,
+    n_repeats=10,
+):
+
     save_dir = os.path.dirname(save_path)
+
     if save_dir:
         os.makedirs(save_dir, exist_ok=True)
 
@@ -23,13 +33,40 @@ def plot_permutation_importance(model, X, y, feature_names, save_path, n_repeats
     importances = result.importances_mean
     order = np.argsort(importances)[::-1]
 
+    # SAVE CSV
+    importance_df = pd.DataFrame({
+        "feature": feature_names,
+        "importance_mean": result.importances_mean,
+        "importance_std": result.importances_std,
+    })
+
+    importance_df.sort_values(
+        "importance_mean",
+        ascending=False,
+    ).to_csv(
+        save_path.replace(".png", ".csv"),
+        index=False,
+    )
+
     plt.figure(figsize=(12, 5))
-    plt.bar([feature_names[i] for i in order], importances[order])
+
+    plt.bar(
+        [feature_names[i] for i in order],
+        importances[order],
+    )
+
     plt.xticks(rotation=45, ha="right")
     plt.ylabel("Permutation Importance")
     plt.title("Permutation Feature Importance")
+
     plt.tight_layout()
-    plt.savefig(save_path, dpi=300, bbox_inches="tight")
+
+    plt.savefig(
+        save_path,
+        dpi=300,
+        bbox_inches="tight",
+    )
+
     plt.close()
 
 def plot_shap_summary_rf(model, X, feature_names, save_path):

@@ -8,7 +8,7 @@ def get_or_cache_dataset(
     magnification,
     num_normal,
     num_tumour,
-    use_haralick,
+    feature_set,
     cache_dir="feature_cache",
     ):
 
@@ -17,7 +17,7 @@ def get_or_cache_dataset(
         f"{magnification}_"
         f"{num_normal}_"
         f"{num_tumour}_"
-        f"haralick_{use_haralick}"
+        f"feature_set_{feature_set}"
         )
 
     cache_path = Path(cache_dir) / f"{key}.pkl"
@@ -35,7 +35,7 @@ def get_or_cache_dataset(
         magnification=magnification,
         num_normal=num_normal,
         num_tumour=num_tumour,
-        use_haralick=use_haralick,
+        feature_set=feature_set,
         )
 
     cache_path.parent.mkdir(exist_ok=True)

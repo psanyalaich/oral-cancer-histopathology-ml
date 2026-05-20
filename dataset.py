@@ -40,7 +40,7 @@ def build_dataset(
     magnification="100x",
     num_normal=None,
     num_tumour=None,
-    use_haralick=False,
+    feature_set="all",
     ):
     
     normal_dir = f"data/{magnification}/normal"
@@ -63,7 +63,7 @@ def build_dataset(
         try:
             img = load_image(path)
             mask = segment_tissue(img)
-            features = extract_features(img, mask, use_haralick=use_haralick)
+            features = extract_features(img, mask, feature_set=feature_set)
 
             X.append(features)
             y.append(0)
@@ -78,7 +78,7 @@ def build_dataset(
         try:
             img = load_image(path)
             mask = segment_tissue(img)
-            features = extract_features(img, mask, use_haralick=use_haralick)
+            features = extract_features(img, mask, feature_set=feature_set)
 
             X.append(features)
             y.append(1)

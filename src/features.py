@@ -32,12 +32,56 @@ HARALICK_FEATURE_NAMES = [
     "haralick_homogeneity",
 ]
 
+FEATURE_GROUPS = {
+    "color": ["color"],
+    "lbp": ["lbp"],
+    "haralick": ["haralick"],
+
+    "color_lbp": [
+        "color",
+        "lbp",
+    ],
+
+    "color_haralick": [
+        "color",
+        "haralick",
+    ],
+
+    "lbp_haralick": [
+        "lbp",
+        "haralick",
+    ],
+
+    "all": [
+        "color",
+        "lbp",
+        "haralick",
+    ],
+}
+
 MIN_TISSUE_FRACTION = 0.05
 
-def get_feature_names(use_haralick=False):
-    if use_haralick:
-        return BASE_FEATURE_NAMES + HARALICK_FEATURE_NAMES
-    return BASE_FEATURE_NAMES
+def get_feature_names(feature_set="all"):
+
+    if feature_set not in FEATURE_GROUPS:
+        raise ValueError(
+            f"Unknown feature set: {feature_set}"
+        )
+
+    feature_groups = FEATURE_GROUPS[feature_set]
+
+    names = []
+
+    if "color" in feature_groups:
+        names.extend(BASE_FEATURE_NAMES[:6])
+
+    if "lbp" in feature_groups:
+        names.extend(BASE_FEATURE_NAMES[6:])
+
+    if "haralick" in feature_groups:
+        names.extend(HARALICK_FEATURE_NAMES)
+
+    return names
 
 def extract_color_features(img, mask):
     features = []
@@ -79,16 +123,28 @@ def extract_lbp_features(img, mask):
 def extract_haralick_features(img, mask):
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
-    # Check tissue coverage
     tissue_fraction = np.mean(mask > 0)
 
     if tissue_fraction < MIN_TISSUE_FRACTION:
         return [0.0, 0.0, 0.0, 0.0]
 
-    tissue_gray = gray.copy()
-    tissue_gray[mask == 0] = 0
+    ys, xs = np.where(mask > 0)
 
-    # Reduce gray levels to stabilize GLCM
+    if len(xs) == 0 or len(ys) == 0:
+        return [0.0, 0.0, 0.0, 0.0]
+
+    x_min, x_max = xs.min(), xs.max()
+    y_min, y_max = ys.min(), ys.max()
+
+    cropped_gray = gray[y_min:y_max + 1, x_min:x_max + 1]
+    cropped_mask = mask[y_min:y_max + 1, x_min:x_max + 1]
+
+    if np.mean(cropped_mask > 0) < 0.25:
+        return [0.0, 0.0, 0.0, 0.0]
+    
+    tissue_gray = cropped_gray.copy()
+    tissue_gray[cropped_mask == 0] = 0
+
     tissue_gray = (tissue_gray // 16).astype(np.uint8)
 
     glcm = graycomatrix(
@@ -108,14 +164,37 @@ def extract_haralick_features(img, mask):
 
     return features
 
-def extract_features(img, mask, use_haralick=False):
-    color_features = extract_color_features(img, mask)
-    lbp_features = extract_lbp_features(img, mask)
+def extract_features(
+    img,
+    mask,
+    feature_set="all",
+):
 
-    features = color_features + lbp_features
+    if feature_set not in FEATURE_GROUPS:
+        raise ValueError(
+            f"Unknown feature set: {feature_set}"
+        )
 
-    if use_haralick:
-        haralick_features = extract_haralick_features(img, mask)
-        features += haralick_features
+    feature_groups = FEATURE_GROUPS[feature_set]
+
+    features = []
+
+    if "color" in feature_groups:
+        features += extract_color_features(
+            img,
+            mask,
+        )
+
+    if "lbp" in feature_groups:
+        features += extract_lbp_features(
+            img,
+            mask,
+        )
+
+    if "haralick" in feature_groups:
+        features += extract_haralick_features(
+            img,
+            mask,
+        )
 
     return np.array(features, dtype=float)

@@ -1,7 +1,12 @@
 import os
 import numpy as np
 import pandas as pd
-from scipy.stats import t, wilcoxon
+from scipy.stats import (
+    t,
+    wilcoxon,
+    ttest_ind,
+    mannwhitneyu,
+)
 from src.statistics_utils import verify_same_splits
 
 def load_fold_metric(results_dir, metric="accuracy"):
@@ -38,37 +43,76 @@ def paired_ttest_corrected(
 
     return t_stat, p_val
 
-def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric="accuracy"):
+def independent_tests(a, b):
+
+    t_stat, t_p = ttest_ind(
+        a,
+        b,
+        equal_var=False,
+    )
+
+    u_stat, u_p = mannwhitneyu(
+        a,
+        b,
+        alternative="two-sided",
+    )
+
+    return (
+        t_stat,
+        t_p,
+        u_stat,
+        u_p,
+    )
+
+def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric="accuracy", paired=True):
+    
     a = load_fold_metric(exp1_dir, metric)
     b = load_fold_metric(exp2_dir, metric)
 
     if len(a) != len(b):
         raise ValueError("Experiments must have the same number of folds.")
 
-    if not verify_same_splits(exp1_dir, exp2_dir):
-        raise ValueError(
-            "Cross-validation splits do not match. "
-            "Paired statistical testing is invalid."
+    if paired:
+
+        if not verify_same_splits(exp1_dir, exp2_dir):
+            raise ValueError(
+                "Cross-validation splits do not match. "
+                "Paired statistical testing is invalid."
+            )
+
+        n_test = len(
+            np.load(
+                os.path.join(
+                    exp1_dir,
+                    "test_idx_fold_1.npy"
+                )
+            )
         )
-    
-    n_test = len(
-        np.load(
-            os.path.join(exp1_dir, "test_idx_fold_1.npy")
+
+        t_stat, t_p = paired_ttest_corrected(
+            a,
+            b,
+            n_test=n_test,
         )
-    )
 
-    t_stat, t_p = paired_ttest_corrected(
-        a,
-        b,
-        n_test=n_test,
-    )
+        diff = a - b
 
-    diff = a - b
+        if np.allclose(diff, 0):
+            w_stat, w_p = 0.0, 1.0
+        else:
+            w_stat, w_p = wilcoxon(a, b)
 
-    if np.allclose(diff, 0):
-        w_stat, w_p = 0.0, 1.0
+        test_name_1 = "Corrected paired t-test"
+        test_name_2 = "Wilcoxon signed-rank test"
+
     else:
-        w_stat, w_p = wilcoxon(a, b)
+
+        t_stat, t_p, w_stat, w_p = independent_tests(a, b)
+
+        diff = a - b
+
+        test_name_1 = "Welch's t-test"
+        test_name_2 = "Mann-Whitney U test"
 
     if diff.std(ddof=1) == 0:
         effect_size = 0.0
@@ -79,10 +123,13 @@ def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric="accuracy"):
     print(f"{exp1_dir}: mean={a.mean():.4f}, std={a.std(ddof=1):.4f}")
     print(f"{exp2_dir}: mean={b.mean():.4f}, std={b.std(ddof=1):.4f}")
     print(
-        f"Corrected paired t-test: "
+        f"{test_name_1}: "
         f"statistic={t_stat:.4f}, p={t_p:.6f}"
     )
-    print(f"Wilcoxon test: statistic={w_stat:.4f}, p={w_p:.6f}")
+    print(
+        f"{test_name_2}: "
+        f"statistic={w_stat:.4f}, p={w_p:.6f}"
+    )
     print(f"Effect size (Cohen's d approximation): {effect_size:.4f}")
 
     return {
@@ -90,10 +137,10 @@ def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric="accuracy"):
         "experiment_1": exp1_dir,
         "experiment_2": exp2_dir,
         "metric": metric,
-        "paired_t_stat": t_stat,
-        "paired_t_p": t_p,
-        "wilcoxon_stat": w_stat,
-        "wilcoxon_p": w_p,
+        "test_1_stat": t_stat,
+        "test_1_p": t_p,
+        "test_2_stat": w_stat,
+        "test_2_p": w_p,
         "effect_size": effect_size,
     }
 
@@ -114,12 +161,14 @@ if __name__ == "__main__":
         "results/svm_full_100x",
         "results/rf_full_100x",
         "model_comparison_100x",
+        True,
     ),
 
     (
         "results/svm_full_400x",
         "results/rf_full_400x",
         "model_comparison_400x",
+        True,
     ),
 
     # HARALICK EFFECT
@@ -127,12 +176,14 @@ if __name__ == "__main__":
         "results/svm_haralick_full_100x",
         "results/svm_full_100x",
         "haralick_effect_svm_100x",
+        True,
     ),
 
     (
         "results/rf_haralick_full_100x",
         "results/rf_full_100x",
         "haralick_effect_rf_100x",
+        True,
     ),
 
     # MAGNIFICATION EFFECT
@@ -140,19 +191,21 @@ if __name__ == "__main__":
         "results/svm_full_100x",
         "results/svm_full_400x",
         "magnification_effect_svm",
+        False,
     ),
 
     (
         "results/rf_full_100x",
         "results/rf_full_400x",
         "magnification_effect_rf",
+        False,
     ),
     ]
 
     # RESULTS
     results = []
 
-    for exp1, exp2, comparison_name in experiment_pairs:
+    for exp1, exp2, comparison_name, paired in experiment_pairs:
         for metric in metrics:
 
                 result = compare_experiments(
@@ -160,6 +213,7 @@ if __name__ == "__main__":
                     exp2,
                     comparison_name,
                     metric=metric,
+                    paired=paired,
                 )
 
                 results.append(result)
@@ -168,13 +222,13 @@ if __name__ == "__main__":
 
     n_tests = len(results_df)
 
-    results_df["paired_t_p_bonferroni"] = np.minimum(
-        results_df["paired_t_p"] * n_tests,
+    results_df["test_1_p_bonferroni"] = np.minimum(
+        results_df["test_1_p"] * n_tests,
         1.0,
     )
 
-    results_df["wilcoxon_p_bonferroni"] = np.minimum(
-        results_df["wilcoxon_p"] * n_tests,
+    results_df["test_2_p_bonferroni"] = np.minimum(
+        results_df["test_2_p"] * n_tests,
         1.0,
     )
 
