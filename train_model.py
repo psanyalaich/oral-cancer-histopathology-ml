@@ -1,237 +1,35 @@
 # IMPORTS
 import os
-import csv
 import json
 import logging
 import matplotlib
-import numpy as np
 import pandas as pd
 matplotlib.use("Agg")
 
-from sklearn.svm import SVC
-from sklearn.pipeline import Pipeline
-from sklearn.metrics import roc_auc_score
-from sklearn.metrics import confusion_matrix
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import GridSearchCV
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import StratifiedKFold
-
 from src.features import get_feature_names
-from src.metrics_utils import compute_all_metrics
-from src.statistics_utils import confidence_interval
+from src.experiment_runner import run_fold
+from src.rf_analysis import run_rf_analysis
+from src.evaluation_utils import save_overall_evaluation
+
+from src.results_utils import (
+    initialize_summary_csv,
+    save_fold_metrics,
+    save_predictions,
+    save_best_params,
+    write_metrics_txt,
+    append_summary_row,
+)
 
 from src.analysis_plots import (
     plot_class_distribution, 
     plot_feature_correlation
 )
 
-from src.explainability import (
-    plot_permutation_importance,
-    plot_shap_summary_rf
-)
-
 from src.cache_utils import get_or_cache_dataset
-
-from visualize_results import (
-    plot_roc_curve, 
-    plot_pr_curve, 
-    plot_confusion_matrix, 
-    plot_feature_importance
-)
 
 from experiments import EXPERIMENTS
 
-# MODEL
-def get_model(model_type, use_scaling=True):
-
-    if model_type == "rf":
-        model = RandomForestClassifier(
-            n_estimators=100,
-            class_weight="balanced",
-            random_state=42,
-        )
-
-    elif model_type == "svm":
-        model = SVC(
-            kernel="rbf",
-            probability=True,
-            class_weight="balanced",
-            random_state=42,
-        )
-
-    else:
-        raise ValueError(f"Unknown model type: {model_type}")
-
-    if model_type == "rf":
-        pipeline = Pipeline([
-            ("classifier", model),
-        ])
-
-    elif model_type == "svm":
-        steps = []
-
-        if use_scaling:
-            steps.append(
-                ("scaler", StandardScaler())
-            )
-
-        steps.append(
-            ("classifier", model)
-        )
-
-        pipeline = Pipeline(steps)
-
-    return pipeline
-
-def run_fold(
-    fold,
-    X,
-    y,
-    image_paths,
-    split_dir,
-    model_type,
-    results_dir,
-    experiment_name,
-    feature_names,
-    use_scaling,
-    ):
-
-    train_idx = np.load(
-        os.path.join(
-            split_dir,
-            f"train_idx_fold_{fold}.npy"
-        )
-    )
-
-    test_idx = np.load(
-        os.path.join(
-            split_dir,
-            f"test_idx_fold_{fold}.npy"
-        )
-    )
-
-    X_train = X[train_idx]
-    X_test = X[test_idx]
-
-    y_train = y[train_idx]
-    y_test = y[test_idx]
-
-    print(f"\nFold {fold}")
-
-    base_model = get_model(
-        model_type,
-        use_scaling=use_scaling,
-    )
-
-    # PARAM GRID
-    if model_type == "rf":
-
-        param_grid = {
-            "classifier__n_estimators": [100],
-            "classifier__max_depth": [None, 10],
-        }
-
-    elif model_type == "svm":
-
-        param_grid = {
-            "classifier__C": [0.1, 1],
-            "classifier__gamma": ["scale", 0.01],
-        }
-
-    grid = GridSearchCV(
-        estimator=base_model,
-        param_grid=param_grid,
-        scoring="roc_auc",
-        cv=StratifiedKFold(
-            n_splits=3,
-            shuffle=True,
-            random_state=42,
-        ),
-        n_jobs=-1,
-    )
-
-    grid.fit(X_train, y_train)
-
-    clf = grid.best_estimator_
-
-    print("Best Params:", grid.best_params_)
-
-    y_pred = clf.predict(X_test)
-    y_prob = clf.predict_proba(X_test)[:, 1]
-
-    fold_metrics = compute_all_metrics(
-        y_test,
-        y_pred,
-        y_prob,
-    )
-
-    fold_row = {
-        "experiment": experiment_name,
-        "fold": fold,
-        **fold_metrics,
-    }
-
-    prediction_rows = []
-
-    test_paths = [image_paths[i] for i in test_idx]
-
-    for yt, yp, ypb, img_path in zip(
-        y_test,
-        y_pred,
-        y_prob,
-        test_paths,
-    ):
-
-        prediction_rows.append({
-            "experiment": experiment_name,
-            "model": model_type,
-            "fold": fold,
-            "image_path": img_path,
-            "y_true": int(yt),
-            "y_pred": int(yp),
-            "y_prob": float(ypb),
-        })
-
-    print("Accuracy:", round(fold_metrics["accuracy"], 3))
-    print("AUC:", round(fold_metrics["auc"], 3))
-
-    if model_type == "rf":
-
-        plot_permutation_importance(
-            clf,
-            X_test,
-            y_test,
-            feature_names,
-            os.path.join(
-                results_dir,
-                f"permutation_importance_fold_{fold}.png",
-                
-            ),
-        )
-
-    plot_confusion_matrix(
-        y_test,
-        y_pred,
-        os.path.join(
-            results_dir,
-            f"confusion_matrix_fold_{fold}.png"
-        ),
-        normalize=True,
-    )
-
-    return {
-        "fold_row": fold_row,
-        "prediction_rows": prediction_rows,
-        "y_test": y_test,
-        "y_pred": y_pred,
-        "y_prob": y_prob,
-        "best_params": {
-            "fold": fold,
-            "best_cv_auc": grid.best_score_,
-            **grid.best_params_,
-        },
-    }
+N_FOLDS = 25
 
 def run_experiment(config):
 
@@ -315,8 +113,6 @@ def run_experiment(config):
         f"{NUM_TUMOUR}"
     )
 
-    N_FOLDS = 25
-
     for fold in range(1, N_FOLDS + 1):
 
         try:
@@ -373,276 +169,57 @@ def run_experiment(config):
             f"{fold_df[metric].std():.3f}"
         )
 
-    # SAVE BEST PARAMS
-    best_params_df = pd.DataFrame(best_params_rows)
-
-    best_params_df.to_csv(
-        os.path.join(
-            RESULTS_DIR,
-            "best_hyperparameters.csv",
-        ),
-        index=False,
-    )
-
-    # SAVE FOLD RESULTS
-    fold_df.to_csv(
-        os.path.join(
-            RESULTS_DIR,
-            "fold_metrics.csv",
-        ),
-        index=False,
-    )
-
-    # SAVE PREDICTIONS
-    pred_df = pd.DataFrame(prediction_rows)
-
-    pred_df.to_csv(
-        os.path.join(
-            RESULTS_DIR,
-            "fold_predictions.csv",
-        ),
-        index=False,
-    )
-
-    # SUMMARY METRICS
-    summary = fold_df.drop(
-        columns=["experiment", "fold"]
-    ).agg(["mean", "std"]).T
-
-    summary.to_csv(
-        os.path.join(
-            RESULTS_DIR,
-            "summary_metrics.csv",
-        )
-    )
-
-    # METRICS TXT
-    metrics_path = os.path.join(
+    save_best_params(
+        best_params_rows,
         RESULTS_DIR,
-        "metrics.txt",
     )
 
-    with open(metrics_path, "w") as f:
-
-        f.write(f"Experiment: {EXPERIMENT_NAME}\n")
-        f.write(f"Magnification: {MAGNIFICATION}\n")
-        f.write(f"Model: {MODEL_TYPE}\n")
-        f.write(f"Use Feature Set: {FEATURE_SET}\n")
-        f.write(f"Normal images: {NUM_NORMAL}\n")
-        f.write(f"Tumour images: {NUM_TUMOUR}\n\n")
-        f.write(f"Use Scaling: {USE_SCALING}\n")
-
-        for metric in [
-            "accuracy",
-            "auc",
-            "pr_auc",
-            "precision",
-            "f1_score",
-            "sensitivity",
-            "specificity",
-            "mcc",
-        ]:
-
-            mean_value = fold_df[metric].mean()
-            std_value = fold_df[metric].std()
-
-            mean, ci_low, ci_high = confidence_interval(
-                fold_df[metric].values
-            )
-
-            f.write(
-                f"{metric}: "
-                f"{mean_value:.3f} ± {std_value:.3f}\n"
-                f"(95% CI: {ci_low:.3f} - {ci_high:.3f})\n"
-            )
-
-    # APPEND TO SUMMARY CSV
-    with open(SUMMARY_CSV, "a", newline="") as f:
-
-        writer = csv.writer(f)
-
-        accuracy_mean, accuracy_ci_low, accuracy_ci_high = confidence_interval(
-            fold_df["accuracy"].values
-        )
-
-        writer.writerow([
-
-            EXPERIMENT_NAME,
-            MODEL_TYPE,
-            MAGNIFICATION,
-            FEATURE_SET,
-            NUM_NORMAL,
-            NUM_TUMOUR,
-            USE_SCALING,
-
-            round(fold_df["accuracy"].mean(), 3),
-            round(fold_df["accuracy"].std(), 3),
-
-            round(fold_df["auc"].mean(), 3),
-            round(fold_df["auc"].std(), 3),
-
-            round(fold_df["pr_auc"].mean(), 3),
-            round(fold_df["pr_auc"].std(), 3),
-
-            round(fold_df["precision"].mean(), 3),
-            round(fold_df["precision"].std(), 3),
-
-            round(fold_df["sensitivity"].mean(), 3),
-            round(fold_df["sensitivity"].std(), 3),
-
-            round(fold_df["f1_score"].mean(), 3),
-            round(fold_df["f1_score"].std(), 3),
-
-            round(fold_df["specificity"].mean(), 3),
-            round(fold_df["specificity"].std(), 3),
-
-            round(fold_df["mcc"].mean(), 3),
-            round(fold_df["mcc"].std(), 3),
-
-            round(accuracy_ci_low, 3),
-            round(accuracy_ci_high, 3),
-        ])
-
-    pooled_auc = roc_auc_score(
-        all_y_test,
-        all_y_prob,
+    save_fold_metrics(
+        fold_df,
+        RESULTS_DIR,
     )
 
-    # ROC CURVE
-    plot_roc_curve(
-        all_y_test,
-        all_y_prob,
-        os.path.join(RESULTS_DIR, "roc_curve.png"),
-        pooled_auc=pooled_auc,
-        csv_path=os.path.join(
-            RESULTS_DIR,
-            "roc_curve_data.csv",
-        ),
+    save_predictions(
+        prediction_rows,
+        RESULTS_DIR,
     )
 
-    # PR CURVE
-    plot_pr_curve(
-        all_y_test,
-        all_y_prob,
-        os.path.join(RESULTS_DIR, "pr_curve.png"),
-        csv_path=os.path.join(
-            RESULTS_DIR,
-            "pr_curve_data.csv",
-        ),
-    )
-
-    # OVERALL CONFUSION MATRIX
-    plot_confusion_matrix(
-        all_y_test,
-        all_y_pred,
+    write_metrics_txt(
         os.path.join(
             RESULTS_DIR,
-            "confusion_matrix_overall.png",
+            "metrics.txt",
         ),
-        normalize=True,
+        config,
+        fold_df,
     )
 
-    cm = confusion_matrix(
-        all_y_test,
-        all_y_pred,
+    append_summary_row(
+        SUMMARY_CSV,
+        config,
+        fold_df,
     )
 
-    cm_df = pd.DataFrame(
-        cm,
-        index=["Normal", "Tumour"],
-        columns=["Pred_Normal", "Pred_Tumour"],
-    )
-
-    cm_df.to_csv(
-        os.path.join(
-            RESULTS_DIR,
-            "confusion_matrix_overall.csv",
-        )
+    save_overall_evaluation(
+        all_y_test=all_y_test,
+        all_y_pred=all_y_pred,
+        all_y_prob=all_y_prob,
+        results_dir=RESULTS_DIR,
     )
 
     # RF ANALYSIS
     if MODEL_TYPE == "rf":
 
-        final_rf = get_model("rf", use_scaling=False)
-        final_rf.fit(X, y)
-
-        rf_model = final_rf.named_steps["classifier"]
-
-        plot_feature_importance(
-            feature_names,
-            rf_model.feature_importances_,
-            os.path.join(
-                RESULTS_DIR,
-                "feature_importance.png",
-            ),
-        )
-
-        rng = np.random.default_rng(42)
-
-        sample_idx = rng.choice(
-            len(X),
-            size=min(200, len(X)),
-            replace=False,
-        )
-
-        X_shap = X[sample_idx]
-
-        plot_shap_summary_rf(
-            final_rf,
-            X_shap,
-            feature_names,
-            os.path.join(
-                RESULTS_DIR,
-                "shap_summary.png",
-            ),
+        run_rf_analysis(
+            X=X,
+            y=y,
+            feature_names=feature_names,
+            results_dir=RESULTS_DIR,
         )
 
 # SUMMARY CSV
 SUMMARY_CSV = "results_summary.csv"
 
-if os.path.exists(SUMMARY_CSV):
-    os.remove(SUMMARY_CSV)
-
-if not os.path.exists(SUMMARY_CSV):
-    with open(SUMMARY_CSV, "w", newline="") as f:
-        writer = csv.writer(f)
-
-        writer.writerow([
-            "experiment",
-            "model",
-            "magnification",
-            "feature_set",
-            "num_normal",
-            "num_tumour",
-            "use_scaling",
-
-            "accuracy_mean",
-            "accuracy_std",
-
-            "auc_mean",
-            "auc_std",
-
-            "pr_auc_mean",
-            "pr_auc_std",
-
-            "precision_mean",
-            "precision_std",
-
-            "f1_score_mean",
-            "f1_score_std",
-
-            "sensitivity_mean",
-            "sensitivity_std",
-
-            "specificity_mean",
-            "specificity_std",
-
-            "mcc_mean",
-            "mcc_std",
-
-            "accuracy_ci_low",
-            "accuracy_ci_high",
-        ])
+initialize_summary_csv(SUMMARY_CSV)
 
 def main():
 
