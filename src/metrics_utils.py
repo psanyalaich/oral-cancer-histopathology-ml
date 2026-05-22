@@ -7,6 +7,7 @@ from sklearn.metrics import (
     f1_score,
     confusion_matrix,
     matthews_corrcoef,
+    brier_score_loss,
 )
 
 def compute_all_metrics(y_true, y_pred, y_prob):
@@ -24,6 +25,8 @@ def compute_all_metrics(y_true, y_pred, y_prob):
 
     mcc = matthews_corrcoef(y_true, y_pred)
 
+    brier = brier_score_loss(y_true, y_prob)
+
     return {
         "accuracy": accuracy,
         "auc": auc,
@@ -37,4 +40,5 @@ def compute_all_metrics(y_true, y_pred, y_prob):
         "fn": fn,
         "tp": tp,
         "mcc": mcc,
+        "brier_score": brier,
     }

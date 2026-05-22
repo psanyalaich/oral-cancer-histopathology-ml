@@ -12,7 +12,12 @@ from src.model_utils import (
 )
 
 from src.metrics_utils import compute_all_metrics
-from src.visualize_results import plot_confusion_matrix
+
+from src.visualize_results import (
+    plot_confusion_matrix,
+    plot_calibration_curve,
+)
+
 from src.explainability import plot_permutation_importance
 
 def run_fold(
@@ -65,6 +70,8 @@ def run_fold(
             random_state=42,
         ),
         n_jobs=-1,
+        refit=True,
+        return_train_score=True,
     )
 
     grid.fit(X_train, y_train)
@@ -130,6 +137,15 @@ def run_fold(
         normalize=True,
     )
 
+    plot_calibration_curve(
+        y_test,
+        y_prob,
+        os.path.join(
+            results_dir,
+            f"calibration_curve_fold_{fold}.png",
+        ),
+    )
+
     return {
         "fold_row": fold_row,
         "prediction_rows": prediction_rows,
@@ -139,6 +155,8 @@ def run_fold(
         "best_params": {
             "fold": fold,
             "best_cv_auc": grid.best_score_,
+            "cv_std": grid.cv_results_["std_test_score"][grid.best_index_],
+            "n_hyperparameter_configs": len(grid.cv_results_["params"]),
             **grid.best_params_,
         },
     }
