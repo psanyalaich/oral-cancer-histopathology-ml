@@ -1,24 +1,23 @@
 import os
 import numpy as np
-
-from sklearn.model_selection import (
-    GridSearchCV,
-    StratifiedKFold,
-)
+from src.metrics_utils import compute_all_metrics
+from src.explainability import plot_permutation_importance
 
 from src.model_utils import (
     get_model,
-    get_param_grid,
+    get_param_grid
 )
-
-from src.metrics_utils import compute_all_metrics
 
 from src.visualize_results import (
     plot_confusion_matrix,
-    plot_calibration_curve,
+    plot_calibration_curve
 )
 
-from src.explainability import plot_permutation_importance
+from sklearn.model_selection import (
+    GridSearchCV,
+    StratifiedKFold
+)
+
 
 def run_fold(
     fold,
@@ -31,6 +30,7 @@ def run_fold(
     experiment_name,
     feature_names,
     use_scaling,
+    seed
 ):
 
     train_idx = np.load(
@@ -56,6 +56,7 @@ def run_fold(
     base_model = get_model(
         model_type,
         use_scaling=use_scaling,
+        seed=seed
     )
 
     param_grid = get_param_grid(model_type)
@@ -67,11 +68,11 @@ def run_fold(
         cv=StratifiedKFold(
             n_splits=3,
             shuffle=True,
-            random_state=42,
+            random_state=seed
         ),
         n_jobs=-1,
         refit=True,
-        return_train_score=True,
+        return_train_score=True
     )
 
     grid.fit(X_train, y_train)
@@ -84,13 +85,13 @@ def run_fold(
     fold_metrics = compute_all_metrics(
         y_test,
         y_pred,
-        y_prob,
+        y_prob
     )
 
     fold_row = {
         "experiment": experiment_name,
         "fold": fold,
-        **fold_metrics,
+        **fold_metrics
     }
 
     prediction_rows = []
@@ -101,7 +102,7 @@ def run_fold(
         y_test,
         y_pred,
         y_prob,
-        test_paths,
+        test_paths
     ):
 
         prediction_rows.append({
@@ -111,7 +112,7 @@ def run_fold(
             "image_path": img_path,
             "y_true": int(yt),
             "y_pred": int(yp),
-            "y_prob": float(ypb),
+            "y_prob": float(ypb)
         })
 
     if model_type == "rf":
@@ -123,8 +124,9 @@ def run_fold(
             feature_names,
             os.path.join(
                 results_dir,
-                f"permutation_importance_fold_{fold}.png",
+                f"permutation_importance_fold_{fold}.png"
             ),
+            seed=seed
         )
 
     plot_confusion_matrix(
@@ -134,7 +136,7 @@ def run_fold(
             results_dir,
             f"confusion_matrix_fold_{fold}.png"
         ),
-        normalize=True,
+        normalize=True
     )
 
     plot_calibration_curve(
@@ -142,8 +144,8 @@ def run_fold(
         y_prob,
         os.path.join(
             results_dir,
-            f"calibration_curve_fold_{fold}.png",
-        ),
+            f"calibration_curve_fold_{fold}.png"
+        )
     )
 
     return {
@@ -157,6 +159,6 @@ def run_fold(
             "best_cv_auc": grid.best_score_,
             "cv_std": grid.cv_results_["std_test_score"][grid.best_index_],
             "n_hyperparameter_configs": len(grid.cv_results_["params"]),
-            **grid.best_params_,
-        },
+            **grid.best_params_
+        }
     }

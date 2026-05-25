@@ -5,12 +5,10 @@ import pandas as pd
 from src.statistics_utils import confidence_interval
 
 def initialize_summary_csv(summary_csv):
-
     if os.path.exists(summary_csv):
-        os.remove(summary_csv)
+        return
 
-    with open(summary_csv, "w", newline="") as f:
-
+    with open(summary_csv, "w", newline = "") as f:
         writer = csv.writer(f)
 
         writer.writerow([
@@ -18,6 +16,7 @@ def initialize_summary_csv(summary_csv):
             "model",
             "magnification",
             "feature_set",
+            "stain_normalization",
             "num_normal",
             "num_tumour",
             "use_scaling",
@@ -47,18 +46,18 @@ def initialize_summary_csv(summary_csv):
             "mcc_std",
 
             "accuracy_ci_low",
-            "accuracy_ci_high",
+            "accuracy_ci_high"
+
         ])
 
 def save_fold_metrics(fold_df, results_dir):
-
     fold_df.to_csv(
         os.path.join(results_dir, "fold_metrics.csv"),
-        index=False,
+        index=False
     )
 
     summary = fold_df.drop(
-        columns=["experiment", "fold"]
+        columns = ["experiment", "fold"]
     ).agg(["mean", "std"]).T
 
     summary.to_csv(
@@ -66,37 +65,34 @@ def save_fold_metrics(fold_df, results_dir):
     )
 
 def save_predictions(prediction_rows, results_dir):
-
     pred_df = pd.DataFrame(prediction_rows)
 
     pred_df.to_csv(
         os.path.join(
             results_dir,
-            "fold_predictions.csv",
+            "fold_predictions.csv"
         ),
-        index=False,
+        index=False
     )
 
 def save_best_params(best_params_rows, results_dir):
-
     best_params_df = pd.DataFrame(best_params_rows)
 
     best_params_df.to_csv(
         os.path.join(
             results_dir,
-            "best_hyperparameters.csv",
+            "best_hyperparameters.csv"
         ),
-        index=False,
+        index=False
     )
 
 def write_metrics_txt(
     metrics_path,
     config,
-    fold_df,
+    fold_df
 ):
 
     with open(metrics_path, "w") as f:
-
         f.write(f"Experiment: {config['name']}\n")
         f.write(f"Magnification: {config['magnification']}\n")
         f.write(f"Model: {config['model']}\n")
@@ -113,7 +109,7 @@ def write_metrics_txt(
             "f1_score",
             "sensitivity",
             "specificity",
-            "mcc",
+            "mcc"
         ]:
 
             mean_value = fold_df[metric].mean()
@@ -132,14 +128,14 @@ def write_metrics_txt(
 def append_summary_row(
     summary_csv,
     config,
-    fold_df,
+    fold_df
 ):
 
     _, accuracy_ci_low, accuracy_ci_high = confidence_interval(
         fold_df["accuracy"].values
     )
 
-    with open(summary_csv, "a", newline="") as f:
+    with open(summary_csv, "a", newline = "") as f:
 
         writer = csv.writer(f)
 
@@ -149,6 +145,7 @@ def append_summary_row(
             config["model"],
             config["magnification"],
             config["feature_set"],
+            config["stain_normalization"],
             config["num_normal"],
             config["num_tumour"],
             config["use_scaling"],
@@ -178,5 +175,5 @@ def append_summary_row(
             round(fold_df["mcc"].std(), 3),
 
             round(accuracy_ci_low, 3),
-            round(accuracy_ci_high, 3),
+            round(accuracy_ci_high, 3)
         ])

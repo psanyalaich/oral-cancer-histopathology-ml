@@ -10,6 +10,9 @@ def get_or_cache_dataset(
     num_tumour,
     feature_set,
     cache_dir="feature_cache",
+    stain_normalization = None,
+    target_image = None,
+    seed = None
     ):
 
     key = (
@@ -17,13 +20,14 @@ def get_or_cache_dataset(
         f"{magnification}_"
         f"{num_normal}_"
         f"{num_tumour}_"
-        f"feature_set_{feature_set}"
+        f"feature_set_{feature_set}_"
+        f"stain_{stain_normalization or 'no_norm'}_"
+        f"seed_{seed}"
         )
 
     cache_path = Path(cache_dir) / f"{key}.pkl"
 
     if cache_path.exists():
-
         print(f"Loading cached dataset: {cache_path}")
 
         with open(cache_path, "rb") as f:
@@ -32,19 +36,22 @@ def get_or_cache_dataset(
     print(f"Building dataset and caching: {key}")
 
     X, y, used_files, image_paths = build_dataset(
-        magnification=magnification,
-        num_normal=num_normal,
-        num_tumour=num_tumour,
-        feature_set=feature_set,
+        magnification = magnification,
+        num_normal = num_normal,
+        num_tumour = num_tumour,
+        feature_set = feature_set,
+        stain_normalization = stain_normalization,
+        target_image = target_image,
+        seed = seed
         )
 
-    cache_path.parent.mkdir(exist_ok=True)
+    cache_path.parent.mkdir(exist_ok = True)
 
     with open(cache_path, "wb") as f:
         pickle.dump(
             (X, y, used_files, image_paths),
             f,
-            protocol=pickle.HIGHEST_PROTOCOL,
+            protocol=pickle.HIGHEST_PROTOCOL
         )
 
     return X, y, used_files, image_paths

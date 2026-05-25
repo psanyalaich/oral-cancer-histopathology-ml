@@ -3,26 +3,28 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 
-def get_model(model_type, use_scaling=True):
+from configs.model_config import (
+    RF_PARAM_GRID,
+    SVM_PARAM_GRID
+)
 
+def get_model(model_type, use_scaling = True, seed = 42):
     if model_type == "rf":
-
         model = RandomForestClassifier(
             class_weight="balanced",
-            random_state=42,
+            random_state=seed
         )
 
         pipeline = Pipeline([
-            ("classifier", model),
+            ("classifier", model)
         ])
 
     elif model_type == "svm":
-
         model = SVC(
-            kernel="rbf",
-            probability=True,
-            class_weight="balanced",
-            random_state=42,
+            kernel = "rbf",
+            probability = True,
+            class_weight = "balanced",
+            random_state = seed
         )
 
         steps = []
@@ -44,22 +46,9 @@ def get_model(model_type, use_scaling=True):
     return pipeline
 
 def get_param_grid(model_type):
-
     if model_type == "rf":
-
-        return {
-            "classifier__n_estimators": [100, 200],
-            "classifier__max_depth": [None, 10, 20],
-            "classifier__min_samples_split": [2, 5],
-            "classifier__min_samples_leaf": [1, 2],
-        }
-
+        return RF_PARAM_GRID
     elif model_type == "svm":
-
-        return {
-            "classifier__C": [0.1, 1, 10],
-            "classifier__gamma": ["scale", 0.01, 0.001],
-        }
-
+        return SVM_PARAM_GRID
     else:
         raise ValueError(f"Unknown model type: {model_type}")

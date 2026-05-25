@@ -1,22 +1,19 @@
 import os
 import numpy as np
-
 from src.model_utils import get_model
-
 from src.explainability import plot_shap_summary_rf
-
 from src.visualize_results import plot_feature_importance
 
 def run_rf_analysis(
     X,
     y,
     feature_names,
-    results_dir,
+    results_dir
 ):
 
     final_rf = get_model(
         "rf",
-        use_scaling=False,
+        use_scaling=False
     )
 
     final_rf.fit(X, y)
@@ -28,8 +25,8 @@ def run_rf_analysis(
         rf_model.feature_importances_,
         os.path.join(
             results_dir,
-            "feature_importance.png",
-        ),
+            "feature_importance.png"
+        )
     )
 
     rng = np.random.default_rng(42)
@@ -37,7 +34,7 @@ def run_rf_analysis(
     sample_idx = rng.choice(
         len(X),
         size=min(200, len(X)),
-        replace=False,
+        replace = False
     )
 
     X_shap = X[sample_idx]
@@ -48,6 +45,6 @@ def run_rf_analysis(
         feature_names,
         os.path.join(
             results_dir,
-            "shap_summary.png",
-        ),
+            "shap_summary.png"
+        )
     )

@@ -14,6 +14,7 @@ def plot_permutation_importance(
     feature_names,
     save_path,
     n_repeats=10,
+    seed=42
 ):
 
     save_dir = os.path.dirname(save_path)
@@ -26,36 +27,35 @@ def plot_permutation_importance(
         X,
         y,
         n_repeats=n_repeats,
-        random_state=42,
-        scoring="roc_auc",
+        random_state=seed,
+        scoring="roc_auc"
     )
 
     importances = result.importances_mean
     order = np.argsort(importances)[::-1]
 
-    # SAVE CSV
     importance_df = pd.DataFrame({
         "feature": feature_names,
         "importance_mean": result.importances_mean,
-        "importance_std": result.importances_std,
+        "importance_std": result.importances_std
     })
 
     importance_df.sort_values(
         "importance_mean",
-        ascending=False,
+        ascending = False
     ).to_csv(
         save_path.replace(".png", ".csv"),
-        index=False,
+        index=False
     )
 
     plt.figure(figsize=(12, 5))
 
     plt.bar(
         [feature_names[i] for i in order],
-        importances[order],
+        importances[order]
     )
 
-    plt.xticks(rotation=45, ha="right")
+    plt.xticks(rotation = 45, ha = "right")
     plt.ylabel("Permutation Importance")
     plt.title("Permutation Feature Importance")
 
@@ -63,24 +63,22 @@ def plot_permutation_importance(
 
     plt.savefig(
         save_path,
-        dpi=300,
-        bbox_inches="tight",
+        dpi = 300,
+        bbox_inches = "tight"
     )
 
     plt.close()
 
 def plot_shap_summary_rf(model, X, feature_names, save_path):
-
     save_dir = os.path.dirname(save_path)
     
     if save_dir:
-        os.makedirs(save_dir, exist_ok=True)
+        os.makedirs(save_dir, exist_ok = True)
 
     rf = model.named_steps["classifier"]
     explainer = shap.TreeExplainer(rf)
     shap_values = explainer.shap_values(X)
 
-    # binary classification compatibility
     if isinstance(shap_values, list):
         shap_to_plot = shap_values[1]
     elif len(shap_values.shape) == 3:
@@ -93,8 +91,8 @@ def plot_shap_summary_rf(model, X, feature_names, save_path):
     shap.summary_plot(
         shap_to_plot,
         X,
-        feature_names=feature_names,
-        show=False,
+        feature_names = feature_names,
+        show=False
     )
 
     plt.tight_layout()
@@ -102,7 +100,7 @@ def plot_shap_summary_rf(model, X, feature_names, save_path):
     plt.savefig(
         save_path, 
         dpi=300, 
-        bbox_inches="tight",
+        bbox_inches = "tight"
     )
 
     plt.close()

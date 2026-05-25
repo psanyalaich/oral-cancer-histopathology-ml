@@ -1,44 +1,85 @@
 # git rm --cached test.py
 # git commit -m "Stop tracking test.py"
 test.py
-.idea
 
+# python
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 *.pyc
+.pytest_cache/
 
+# ide/os
+.idea/
+.vscode/
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+
+# venv
 .venv/
 venv/
 env/
 
-.ipynb_checkpoints/
-.vscode/
-.DS_Store
-Thumbs.db
-
-data/
-results/*
-!results/sample_outputs/
-!results/sample_outputs/*.png
-
-results_summary.csv
-statistical_tests.csv
-
-cv_splits/
-cv_splits_100x/
-backbone/
-
-*.png
-*.jpg
-*.jpeg
-*.pdf
-
+# package
 build/
 dist/
 *.egg-info/
+
+# logs
 *.log
 
+# cache
+feature_cache/
+cv_splits/
+backbone/
+
+*.npy
+*.joblib
+*.pkl
+
+# notes
 OSCC_Development_Notes.md
-issues.md
+
+# ignore everything in results
+results/**
+
+# allow seed_42
+!results/
+!results/seed_42/
+
+# allow best svm outputs
+!results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/
+!results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/roc_curve.png
+!results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/pr_curve.png
+!results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/confusion_matrix_overall.png
+!results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/calibration_curve_fold_21.png
+
+# allow best svm outputs
+!results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/
+!results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/feature_importance.png
+!results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/feature_correlation.png
+!results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/shap_summary.png
+
+# allow learning curves
+!results/learning_curve_auc.png
+!results/learning_curve_f1.png
+
+# ignore all data
+data/**
+
+# allow folders
+!data/
+!data/100x/
+!data/100x/normal/
+!data/100x/tumour/
+!data/400x/
+!data/400x/normal/
+!data/400x/tumour/
+
+# allow only showcase images
+!data/100x/normal/Normal_100x_1.jpg
+!data/100x/tumour/OSCC_100x_1.jpg
+!data/400x/normal/Normal_400x_1.jpg
+!data/400x/tumour/OSCC_400x_1.jpg

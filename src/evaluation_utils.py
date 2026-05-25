@@ -3,14 +3,15 @@ import os
 from src.visualize_results import (
     plot_roc_curve,
     plot_pr_curve,
-    plot_confusion_matrix,
+    plot_confusion_matrix
 )
+
 
 def save_overall_evaluation(
     all_y_test,
     all_y_pred,
     all_y_prob,
-    results_dir,
+    results_dir
 ):
 
     plot_roc_curve(
@@ -18,12 +19,12 @@ def save_overall_evaluation(
         all_y_prob,
         os.path.join(
             results_dir,
-            "roc_curve.png",
+            "roc_curve.png"
         ),
-        csv_path=os.path.join(
+        csv_path = os.path.join(
             results_dir,
-            "roc_curve_data.csv",
-        ),
+            "roc_curve_data.csv"
+        )
     )
 
     plot_pr_curve(
@@ -31,12 +32,12 @@ def save_overall_evaluation(
         all_y_prob,
         os.path.join(
             results_dir,
-            "pr_curve.png",
+            "pr_curve.png"
         ),
-        csv_path=os.path.join(
+        csv_path = os.path.join(
             results_dir,
-            "pr_curve_data.csv",
-        ),
+            "pr_curve_data.csv"
+        )
     )
 
     plot_confusion_matrix(
@@ -44,11 +45,11 @@ def save_overall_evaluation(
         all_y_pred,
         os.path.join(
             results_dir,
-            "confusion_matrix_overall.png",
+            "confusion_matrix_overall.png"
         ),
-        normalize=True,
-        csv_path=os.path.join(
+        normalize = True,
+        csv_path = os.path.join(
             results_dir,
-            "confusion_matrix_overall.csv",
-        ),
+            "confusion_matrix_overall.csv"
+        )
     )

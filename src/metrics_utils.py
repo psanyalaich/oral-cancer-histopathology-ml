@@ -7,11 +7,11 @@ from sklearn.metrics import (
     f1_score,
     confusion_matrix,
     matthews_corrcoef,
-    brier_score_loss,
+    brier_score_loss
 )
 
 def compute_all_metrics(y_true, y_pred, y_prob):
-    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels = [0, 1]).ravel()
 
     accuracy = accuracy_score(y_true, y_pred)
     auc = roc_auc_score(y_true, y_prob)
@@ -40,5 +40,5 @@ def compute_all_metrics(y_true, y_pred, y_prob):
         "fn": fn,
         "tp": tp,
         "mcc": mcc,
-        "brier_score": brier,
+        "brier_score": brier
     }

@@ -5,20 +5,20 @@ from experiments import EXPERIMENTS
 from sklearn.model_selection import RepeatedStratifiedKFold
 
 GENERATED = set()
-
 for config in EXPERIMENTS:
 
     magnification = config["magnification"]
     num_normal = config["num_normal"]
     num_tumour = config["num_tumour"]
+    seed = config["seed"]
 
     split_key = (
         magnification,
         num_normal,
         num_tumour,
+        seed
     )
 
-    # avoid duplicate split generation
     if split_key in GENERATED:
         continue
 
@@ -28,30 +28,31 @@ for config in EXPERIMENTS:
     print(split_key)
 
     X, y, used_files, image_paths = build_dataset(
-        magnification=magnification,
-        num_normal=num_normal,
-        num_tumour=num_tumour,
-        feature_set="all",
+        magnification=  magnification,
+        num_normal = num_normal,
+        num_tumour = num_tumour,
+        feature_set = "all"
     )
 
     split_dir = (
         f"cv_splits/"
         f"{magnification}_"
         f"{num_normal}_"
-        f"{num_tumour}"
+        f"{num_tumour}_"
+        f"seed_{seed}"
     )
 
     os.makedirs(split_dir, exist_ok=True)
 
     rskf = RepeatedStratifiedKFold(
-        n_splits=5,
-        n_repeats=5,
-        random_state=42,
+        n_splits = 5,
+        n_repeats = 5,
+        random_state = seed
     )
 
     for fold, (train_idx, test_idx) in enumerate(
         rskf.split(X, y),
-        start=1,
+        start = 1
     ):
 
         np.save(
@@ -59,7 +60,7 @@ for config in EXPERIMENTS:
                 split_dir,
                 f"train_idx_fold_{fold}.npy",
             ),
-            train_idx,
+            train_idx
         )
 
         np.save(
@@ -67,10 +68,17 @@ for config in EXPERIMENTS:
                 split_dir,
                 f"test_idx_fold_{fold}.npy",
             ),
-            test_idx,
+            test_idx
         )
 
 print("\nAll splits generated.")
+
+
+
+
+
+
+
 
 
 
@@ -98,7 +106,7 @@ print("\nAll splits generated.")
             rskf = RepeatedStratifiedKFold(
                 n_splits=5,
                 n_repeats=5,
-                random_state=42,
+                random_state=seed,
             )
 
             for fold, (train_idx, test_idx) in enumerate(
@@ -115,7 +123,7 @@ print("\nAll splits generated.")
                 sgkf = StratifiedGroupKFold(
                     n_splits=5,
                     shuffle=True,
-                    random_state=42,
+                    random_state=seed,
                 )
 
                 split_iterator = sgkf.split(
@@ -134,7 +142,7 @@ print("\nAll splits generated.")
                 rskf = RepeatedStratifiedKFold(
                     n_splits=5,
                     n_repeats=5,
-                    random_state=42,
+                    random_state=seed,
                 )
 
                 split_iterator = rskf.split(X, y)

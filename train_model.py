@@ -1,15 +1,20 @@
-# IMPORTS
 import os
 import json
 import logging
-import matplotlib
+import argparse
 import pandas as pd
+
+import matplotlib
 matplotlib.use("Agg")
 
+from experiments import EXPERIMENTS
 from src.features import get_feature_names
 from src.experiment_runner import run_fold
 from src.rf_analysis import run_rf_analysis
+from configs.experiment_config import N_FOLDS
+from src.cache_utils import get_or_cache_dataset
 from src.evaluation_utils import save_overall_evaluation
+from src.learning_curve_analysis import plot_learning_curve
 
 from src.results_utils import (
     initialize_summary_csv,
@@ -17,7 +22,7 @@ from src.results_utils import (
     save_predictions,
     save_best_params,
     write_metrics_txt,
-    append_summary_row,
+    append_summary_row
 )
 
 from src.analysis_plots import (
@@ -25,14 +30,13 @@ from src.analysis_plots import (
     plot_feature_correlation
 )
 
-from src.cache_utils import get_or_cache_dataset
+from src.logging_utils import (
+    setup_experiment_logger,
+    log_experiment_failure
+)
 
-from experiments import EXPERIMENTS
-
-N_FOLDS = 25
 
 def run_experiment(config):
-
     EXPERIMENT_NAME = config["name"]
     MODEL_TYPE = config["model"]
     FEATURE_SET = config["feature_set"]
@@ -40,40 +44,56 @@ def run_experiment(config):
     NUM_NORMAL = config["num_normal"]
     NUM_TUMOUR = config["num_tumour"]
     USE_SCALING = config["use_scaling"]
+    SEED = config["seed"]
 
     print("\n===================================")
     print("RUNNING:", EXPERIMENT_NAME)
     print("===================================")
 
-    RESULTS_DIR = os.path.join("results", EXPERIMENT_NAME)
-    os.makedirs(RESULTS_DIR, exist_ok=True)
+    RESULTS_DIR = os.path.join("results", f"seed_{SEED}", EXPERIMENT_NAME)
+    os.makedirs(RESULTS_DIR, exist_ok = True)
+
+    metrics_file = os.path.join(
+        RESULTS_DIR,
+        "metrics.txt"
+    )
+
+    if os.path.exists(metrics_file):
+        print(f"Skipping completed experiment: {EXPERIMENT_NAME}")
+        return
+
+    logger = setup_experiment_logger(
+        EXPERIMENT_NAME,
+        RESULTS_DIR
+    )
 
     with open(
         os.path.join(RESULTS_DIR, "config.json"),
         "w"
     ) as f:
 
-        json.dump(config, f, indent=4)
+        json.dump(config, f, indent = 4)
 
     X, y, used_files, image_paths = get_or_cache_dataset(
-        magnification=MAGNIFICATION,
-        num_normal=NUM_NORMAL,
-        num_tumour=NUM_TUMOUR,
-        feature_set=FEATURE_SET,
+        magnification = MAGNIFICATION,
+        num_normal = NUM_NORMAL,
+        num_tumour = NUM_TUMOUR,
+        feature_set = FEATURE_SET,
+        seed = SEED
     )
 
     with open(
         os.path.join(
             RESULTS_DIR,
-            "dataset_manifest.json",
+            "dataset_manifest.json"
         ),
-        "w",
+        "w"
     ) as f:
 
         json.dump(
             used_files,
             f,
-            indent=4,
+            indent = 4
         )
 
     feature_names = get_feature_names(FEATURE_SET)
@@ -82,9 +102,9 @@ def run_experiment(config):
         y,
         os.path.join(
             RESULTS_DIR,
-            "class_distribution.png",
+            "class_distribution.png"
         ),
-        title=f"Class Distribution - {EXPERIMENT_NAME}"
+        title = f"Class Distribution - {EXPERIMENT_NAME}"
     )
 
     plot_feature_correlation(
@@ -92,9 +112,9 @@ def run_experiment(config):
         feature_names,
         os.path.join(
             RESULTS_DIR,
-            "feature_correlation.png",
+            "feature_correlation.png"
         ),
-        title=f"Feature Correlation - {EXPERIMENT_NAME}"
+        title = f"Feature Correlation - {EXPERIMENT_NAME}"
     )
 
     fold_rows = []
@@ -110,13 +130,12 @@ def run_experiment(config):
         f"cv_splits/"
         f"{MAGNIFICATION}_"
         f"{NUM_NORMAL}_"
-        f"{NUM_TUMOUR}"
+        f"{NUM_TUMOUR}_"
+        f"seed_{SEED}"
     )
 
     for fold in range(1, N_FOLDS + 1):
-
         try:
-
             result = run_fold(
                 fold=fold,
                 X=X,
@@ -128,6 +147,7 @@ def run_experiment(config):
                 experiment_name=EXPERIMENT_NAME,
                 feature_names=feature_names,
                 use_scaling=USE_SCALING,
+                seed=SEED
             )
 
             fold_rows.append(result["fold_row"])
@@ -140,10 +160,19 @@ def run_experiment(config):
 
             best_params_rows.append(result["best_params"])
 
-        except Exception:
+        except Exception as e:
+            logger.exception(
+                f"Fold {fold} failed."
+            )
 
-            logging.exception(
-                f"Fold {fold} failed in {EXPERIMENT_NAME}"
+            log_experiment_failure(
+                csv_path=os.path.join(
+                    "results",
+                    "failed_experiments.csv"
+                ),
+                experiment_name = EXPERIMENT_NAME,
+                fold = fold,
+                exception = e
             )
 
             raise
@@ -160,7 +189,7 @@ def run_experiment(config):
         "sensitivity",
         "f1_score",
         "specificity",
-        "mcc",
+        "mcc"
     ]:
 
         print(
@@ -171,84 +200,124 @@ def run_experiment(config):
 
     save_best_params(
         best_params_rows,
-        RESULTS_DIR,
+        RESULTS_DIR
     )
 
     save_fold_metrics(
         fold_df,
-        RESULTS_DIR,
+        RESULTS_DIR
     )
 
     save_predictions(
         prediction_rows,
-        RESULTS_DIR,
+        RESULTS_DIR
     )
 
     write_metrics_txt(
         os.path.join(
             RESULTS_DIR,
-            "metrics.txt",
+            "metrics.txt"
         ),
         config,
-        fold_df,
+        fold_df
     )
 
     append_summary_row(
         SUMMARY_CSV,
         config,
-        fold_df,
+        fold_df
     )
 
     save_overall_evaluation(
-        all_y_test=all_y_test,
-        all_y_pred=all_y_pred,
-        all_y_prob=all_y_prob,
-        results_dir=RESULTS_DIR,
+        all_y_test = all_y_test,
+        all_y_pred = all_y_pred,
+        all_y_prob = all_y_prob,
+        results_dir = RESULTS_DIR
     )
 
-    # RF ANALYSIS
     if MODEL_TYPE == "rf":
 
         run_rf_analysis(
-            X=X,
-            y=y,
-            feature_names=feature_names,
-            results_dir=RESULTS_DIR,
+            X = X,
+            y = y,
+            feature_names = feature_names,
+            results_dir = RESULTS_DIR
         )
 
-# SUMMARY CSV
 SUMMARY_CSV = "results_summary.csv"
-
 initialize_summary_csv(SUMMARY_CSV)
 
 def main():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "experiment",
+        nargs = "?",
+        default = None,
+        help = "Run a specific experiment only"
+    )
+
+    args = parser.parse_args()
 
     failed_experiments = []
 
-    for config in EXPERIMENTS:
+    if args.experiment:
+        EXPERIMENTS[:] = [
+            exp for exp in EXPERIMENTS
+            if exp["name"] == args.experiment
+        ]
 
+    for config in EXPERIMENTS:
         try:
             run_experiment(config)
-
-        except Exception:
-
-            failed_experiments.append(config["name"])
+        except Exception as e:
+            failed_experiments.append(
+                config["name"]
+            )
 
             logging.exception(
-                f"Experiment failed: {config['name']}"
+                f"Experiment failed: "
+                f"{config['name']}"
+            )
+
+            log_experiment_failure(
+                csv_path=os.path.join(
+                    "results",
+                    "failed_experiments.csv"
+                ),
+                experiment_name = config["name"],
+                fold = "experiment_level",
+                exception = e
             )
 
     if failed_experiments:
-
         print("\nFailed Experiments:")
         for name in failed_experiments:
             print("-", name)
 
+    plot_learning_curve(
+        summary_csv = SUMMARY_CSV,
+        save_path = os.path.join(
+            "results",
+            "learning_curve_auc.png",
+        ),
+        metric = "auc"
+    )
+
+    plot_learning_curve(
+        summary_csv = SUMMARY_CSV,
+        save_path = os.path.join(
+            "results",
+            "learning_curve_f1.png",
+        ),
+        metric = "f1_score"
+    )
+
 if __name__ == "__main__":
 
     logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
+        level = logging.INFO,
+        format = "%(asctime)s - %(levelname)s - %(message)s"
     )
 
     main()

@@ -1,9 +1,10 @@
 import cv2
 import numpy as np
+
 from skimage.feature import(
     local_binary_pattern, 
     graycomatrix, 
-    graycoprops,
+    graycoprops
 )
 
 BASE_FEATURE_NAMES = [
@@ -22,14 +23,14 @@ BASE_FEATURE_NAMES = [
     "lbp_6",
     "lbp_7",
     "lbp_8",
-    "lbp_9",
+    "lbp_9"
 ]
 
 HARALICK_FEATURE_NAMES = [
     "haralick_contrast",
     "haralick_correlation",
     "haralick_energy",
-    "haralick_homogeneity",
+    "haralick_homogeneity"
 ]
 
 FEATURE_GROUPS = {
@@ -39,24 +40,24 @@ FEATURE_GROUPS = {
 
     "color_lbp": [
         "color",
-        "lbp",
+        "lbp"
     ],
 
     "color_haralick": [
         "color",
-        "haralick",
+        "haralick"
     ],
 
     "lbp_haralick": [
         "lbp",
-        "haralick",
+        "haralick"
     ],
 
     "all": [
         "color",
         "lbp",
-        "haralick",
-    ],
+        "haralick"
+    ]
 }
 
 MIN_TISSUE_FRACTION = 0.05
@@ -107,14 +108,14 @@ def extract_lbp_features(img, mask):
     if tissue_fraction < MIN_TISSUE_FRACTION:
         return [0.0] * 10
 
-    lbp = local_binary_pattern(gray, P=8, R=1, method="uniform")
+    lbp = local_binary_pattern(gray, P = 8, R = 1, method = "uniform")
 
     values = lbp[mask > 0]
 
     if values.size == 0:
         return [0.0] * 10
 
-    hist, _ = np.histogram(values, bins=10, range=(0, 10))
+    hist, _ = np.histogram(values, bins = 10, range = (0, 10))
     hist = hist.astype(float)
     hist /= (hist.sum() + 1e-6)
 
@@ -149,11 +150,11 @@ def extract_haralick_features(img, mask):
 
     glcm = graycomatrix(
         tissue_gray,
-        distances=[1],
-        angles=[0, np.pi/4, np.pi/2, 3*np.pi/4],
-        levels=16,
-        symmetric=True,
-        normed=True,
+        distances = [1],
+        angles = [0, np.pi/4, np.pi/2, 3*np.pi/4],
+        levels = 16,
+        symmetric = True,
+        normed = True
     )
 
     features = []
@@ -167,7 +168,7 @@ def extract_haralick_features(img, mask):
 def extract_features(
     img,
     mask,
-    feature_set="all",
+    feature_set="all"
 ):
 
     if feature_set not in FEATURE_GROUPS:
@@ -182,19 +183,19 @@ def extract_features(
     if "color" in feature_groups:
         features += extract_color_features(
             img,
-            mask,
+            mask
         )
 
     if "lbp" in feature_groups:
         features += extract_lbp_features(
             img,
-            mask,
+            mask
         )
 
     if "haralick" in feature_groups:
         features += extract_haralick_features(
             img,
-            mask,
+            mask
         )
 
     return np.array(features, dtype=float)

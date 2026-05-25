@@ -1,10 +1,17 @@
 import cv2
 import numpy as np
 
-MIN_TISSUE_FRACTION = 0.05
-MAX_TISSUE_FRACTION = 0.95
+from configs.preprocessing_config import (
+    IMAGE_SIZE,
+    MIN_TISSUE_FRACTION,
+    MAX_TISSUE_FRACTION,
+    GAUSSIAN_KERNEL_SIZE,
+    MORPH_KERNEL_SIZE,
+    MIN_COMPONENT_AREA_RATIO,
+    DARK_IMAGE_THRESHOLD
+)
 
-def load_image(path, size=(512, 512)):
+def load_image(path, size=IMAGE_SIZE):
     img = cv2.imread(path)
 
     if img is None:
@@ -17,10 +24,13 @@ def load_image(path, size=(512, 512)):
 
 def segment_tissue(img):
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    gray = cv2.GaussianBlur(gray, (5, 5), 0)
+    gray = cv2.GaussianBlur(
+        gray,
+        GAUSSIAN_KERNEL_SIZE,
+        0
+    )
 
-    # DARK IMAGE SAFEGUARD
-    if gray.mean() < 15:
+    if gray.mean() < DARK_IMAGE_THRESHOLD:
         raise ValueError(
             "Image too dark for reliable segmentation."
         )
@@ -29,27 +39,26 @@ def segment_tissue(img):
         gray,
         0,
         255,
-        cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU,
+        cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
     )
 
     kernel = cv2.getStructuringElement(
         cv2.MORPH_ELLIPSE,
-        (7, 7),
+        MORPH_KERNEL_SIZE
     )
 
     mask = cv2.morphologyEx(
         mask,
         cv2.MORPH_CLOSE,
-        kernel,
+        kernel
     )
 
-    # REMOVE SMALL NOISE
     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask)
 
     cleaned_mask = np.zeros_like(mask)
 
     min_component_area = int(
-        0.001 * mask.shape[0] * mask.shape[1]
+        MIN_COMPONENT_AREA_RATIO * mask.shape[0] * mask.shape[1]
     )
 
     for i in range(1, num_labels):
@@ -63,18 +72,36 @@ def segment_tissue(img):
 
     tissue_fraction = np.count_nonzero(mask) / mask.size
 
-    # EMPTY OR FAILED MASK CHECK
     if tissue_fraction < MIN_TISSUE_FRACTION:
-
         raise ValueError(
             "Segmentation failed: insufficient tissue detected."
         )
 
-    # OVERSEGMENTATION CHECK
     if tissue_fraction > MAX_TISSUE_FRACTION:
-
         raise ValueError(
             "Segmentation failed: excessive tissue detected."
         )
 
     return mask
+
+def normalize_staining(
+    img,
+    method=None,
+    target_image=None
+):
+
+    if method is None:
+        return img
+
+    if target_image is None:
+        raise ValueError(
+            "Target image required for stain normalization."
+        )
+    elif method == "reinhard":
+        raise NotImplementedError(
+            "Reinhard stain normalization not implemented yet."
+        )
+    else:
+        raise ValueError(
+            f"Unknown normalization method: {method}"
+        )

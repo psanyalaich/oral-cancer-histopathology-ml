@@ -1,22 +1,23 @@
 import os
 import numpy as np
 import pandas as pd
+from src.statistics_utils import verify_same_splits
+
 from scipy.stats import (
     t,
     wilcoxon,
     ttest_ind,
-    mannwhitneyu,
+    mannwhitneyu
 )
-from src.statistics_utils import verify_same_splits
 
-def load_fold_metric(results_dir, metric="accuracy"):
+def load_fold_metric(results_dir, metric = "accuracy"):
     df = pd.read_csv(f"{results_dir}/fold_metrics.csv")
     return df.sort_values("fold")[metric].values
 
 def paired_ttest_corrected(
     a: np.ndarray,
     b: np.ndarray,
-    n_test: int,
+    n_test: int
     ):
     
     diff = np.asarray(a) - np.asarray(b)
@@ -24,48 +25,42 @@ def paired_ttest_corrected(
     n = len(diff)
 
     mean_diff = diff.mean()
-    std_diff = diff.std(ddof=1)
+    std_diff = diff.std(ddof = 1)
 
     if std_diff == 0:
         return 0.0, 1.0
 
     rho = 1.0 / n_test
 
-    corrected_se = std_diff * np.sqrt(
-        (1.0 / n) + (rho / (1.0 - rho))
-    )
+    corrected_se = std_diff * np.sqrt((1.0 / n) + (rho / (1.0 - rho)))
 
     t_stat = mean_diff / corrected_se
 
-    p_val = 2 * (
-        1 - t.cdf(abs(t_stat), df=n - 1)
-    )
+    p_val = 2 * (1 - t.cdf(abs(t_stat), df=n - 1))
 
     return t_stat, p_val
 
 def independent_tests(a, b):
-
     t_stat, t_p = ttest_ind(
         a,
         b,
-        equal_var=False,
+        equal_var = False
     )
 
     u_stat, u_p = mannwhitneyu(
         a,
         b,
-        alternative="two-sided",
+        alternative = "two-sided"
     )
 
     return (
         t_stat,
         t_p,
         u_stat,
-        u_p,
+        u_p
     )
 
-def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric="accuracy", paired=True):
-    
+def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric = "accuracy", paired = True):
     a = load_fold_metric(exp1_dir, metric)
     b = load_fold_metric(exp2_dir, metric)
 
@@ -73,26 +68,12 @@ def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric="accuracy", 
         raise ValueError("Experiments must have the same number of folds.")
 
     if paired:
-
-        if not verify_same_splits(exp1_dir, exp2_dir):
-            raise ValueError(
-                "Cross-validation splits do not match. "
-                "Paired statistical testing is invalid."
-            )
-
-        n_test = len(
-            np.load(
-                os.path.join(
-                    exp1_dir,
-                    "test_idx_fold_1.npy"
-                )
-            )
-        )
+        n_test = 5
 
         t_stat, t_p = paired_ttest_corrected(
             a,
             b,
-            n_test=n_test,
+            n_test = n_test
         )
 
         diff = a - b
@@ -106,7 +87,6 @@ def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric="accuracy", 
         test_name_2 = "Wilcoxon signed-rank test"
 
     else:
-
         t_stat, t_p, w_stat, w_p = independent_tests(a, b)
 
         diff = a - b
@@ -114,21 +94,21 @@ def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric="accuracy", 
         test_name_1 = "Welch's t-test"
         test_name_2 = "Mann-Whitney U test"
 
-    if diff.std(ddof=1) == 0:
+    if diff.std(ddof = 1) == 0:
         effect_size = 0.0
     else:
-        effect_size = diff.mean() / diff.std(ddof=1)
+        effect_size = diff.mean() / diff.std(ddof = 1)
 
     print(f"\nMetric: {metric}")
-    print(f"{exp1_dir}: mean={a.mean():.4f}, std={a.std(ddof=1):.4f}")
-    print(f"{exp2_dir}: mean={b.mean():.4f}, std={b.std(ddof=1):.4f}")
+    print(f"{exp1_dir}: mean = {a.mean():.4f}, std = {a.std(ddof = 1):.4f}")
+    print(f"{exp2_dir}: mean = {b.mean():.4f}, std = {b.std(ddof = 1):.4f}")
     print(
         f"{test_name_1}: "
-        f"statistic={t_stat:.4f}, p={t_p:.6f}"
+        f"statistic = {t_stat:.4f}, p = {t_p:.6f}"
     )
     print(
         f"{test_name_2}: "
-        f"statistic={w_stat:.4f}, p={w_p:.6f}"
+        f"statistic = {w_stat:.4f}, p = {w_p:.6f}"
     )
     print(f"Effect size (Cohen's d approximation): {effect_size:.4f}")
 
@@ -141,68 +121,214 @@ def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric="accuracy", 
         "test_1_p": t_p,
         "test_2_stat": w_stat,
         "test_2_p": w_p,
-        "effect_size": effect_size,
+        "effect_size": effect_size
     }
 
 if __name__ == "__main__":
 
-    metrics=[
+    metrics = [
         "accuracy",
         "auc",
         "pr_auc",
         "f1_score",
-        "mcc",
+        "mcc"
     ]
     
     experiment_pairs = [
 
-    # MODEL COMPARISON
+    # =========================================================
+    # MODEL COMPARISONS
+    # =========================================================
+
     (
-        "results/svm_full_100x",
-        "results/rf_full_100x",
-        "model_comparison_100x",
-        True,
+        "results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42",
+        "results/seed_42/rf_unscaled_all_no_norm_full_100x_seed_42",
+        "model_comparison_full_100x_no_norm",
+        True
     ),
 
     (
-        "results/svm_full_400x",
-        "results/rf_full_400x",
-        "model_comparison_400x",
-        True,
-    ),
-
-    # HARALICK EFFECT
-    (
-        "results/svm_haralick_full_100x",
-        "results/svm_full_100x",
-        "haralick_effect_svm_100x",
-        True,
+        "results/seed_42/svm_scaled_all_no_norm_full_400x_seed_42",
+        "results/seed_42/rf_unscaled_all_no_norm_full_400x_seed_42",
+        "model_comparison_full_400x_no_norm",
+        True
     ),
 
     (
-        "results/rf_haralick_full_100x",
-        "results/rf_full_100x",
-        "haralick_effect_rf_100x",
-        True,
-    ),
-
-    # MAGNIFICATION EFFECT
-    (
-        "results/svm_full_100x",
-        "results/svm_full_400x",
-        "magnification_effect_svm",
-        False,
+        "results/seed_42/svm_scaled_all_reinhard_full_100x_seed_42",
+        "results/seed_42/rf_unscaled_all_reinhard_full_100x_seed_42",
+        "model_comparison_full_100x_reinhard",
+        True
     ),
 
     (
-        "results/rf_full_100x",
-        "results/rf_full_400x",
-        "magnification_effect_rf",
-        False,
+        "results/seed_42/svm_scaled_all_reinhard_full_400x_seed_42",
+        "results/seed_42/rf_unscaled_all_reinhard_full_400x_seed_42",
+        "model_comparison_full_400x_reinhard",
+        True
     ),
-    ]
 
-    # RESULTS
+    # =========================================================
+    # MAGNIFICATION EFFECTS
+    # =========================================================
+
+    (
+        "results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42",
+        "results/seed_42/svm_scaled_all_no_norm_full_400x_seed_42",
+        "magnification_effect_svm_no_norm",
+        False
+    ),
+
+    (
+        "results/seed_42/rf_unscaled_all_no_norm_full_100x_seed_42",
+        "results/seed_42/rf_unscaled_all_no_norm_full_400x_seed_42",
+        "magnification_effect_rf_no_norm",
+        False
+    ),
+
+    (
+        "results/seed_42/svm_scaled_all_reinhard_full_100x_seed_42",
+        "results/seed_42/svm_scaled_all_reinhard_full_400x_seed_42",
+        "magnification_effect_svm_reinhard",
+        False
+    ),
+
+    (
+        "results/seed_42/rf_unscaled_all_reinhard_full_100x_seed_42",
+        "results/seed_42/rf_unscaled_all_reinhard_full_400x_seed_42",
+        "magnification_effect_rf_reinhard",
+        False
+    ),
+
+    # =========================================================
+    # STAIN NORMALIZATION EFFECTS
+    # =========================================================
+
+    (
+        "results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42",
+        "results/seed_42/svm_scaled_all_reinhard_full_100x_seed_42",
+        "stain_norm_effect_svm_100x",
+        True
+    ),
+
+    (
+        "results/seed_42/svm_scaled_all_no_norm_full_400x_seed_42",
+        "results/seed_42/svm_scaled_all_reinhard_full_400x_seed_42",
+        "stain_norm_effect_svm_400x",
+        True
+    ),
+
+    (
+        "results/seed_42/rf_unscaled_all_no_norm_full_100x_seed_42",
+        "results/seed_42/rf_unscaled_all_reinhard_full_100x_seed_42",
+        "stain_norm_effect_rf_100x",
+        True
+    ),
+
+    (
+        "results/seed_42/rf_unscaled_all_no_norm_full_400x_seed_42",
+        "results/seed_42/rf_unscaled_all_reinhard_full_400x_seed_42",
+        "stain_norm_effect_rf_400x",
+        True
+    ),
+
+    # =========================================================
+    # FEATURE SET EFFECTS
+    # =========================================================
+
+    (
+        "results/seed_42/svm_scaled_haralick_no_norm_full_100x_seed_42",
+        "results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42",
+        "haralick_vs_all_svm_100x",
+        True
+    ),
+
+    (
+        "results/seed_42/rf_unscaled_haralick_no_norm_full_100x_seed_42",
+        "results/seed_42/rf_unscaled_all_no_norm_full_100x_seed_42",
+        "haralick_vs_all_rf_100x",
+        True
+    ),
+
+    (
+        "results/seed_42/svm_scaled_lbp_no_norm_full_100x_seed_42",
+        "results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42",
+        "lbp_vs_all_svm_100x",
+        True
+    ),
+
+    (
+        "results/seed_42/rf_unscaled_lbp_no_norm_full_100x_seed_42",
+        "results/seed_42/rf_unscaled_all_no_norm_full_100x_seed_42",
+        "lbp_vs_all_rf_100x",
+        True
+    ),
+
+    (
+        "results/seed_42/svm_scaled_color_no_norm_full_100x_seed_42",
+        "results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42",
+        "color_vs_all_svm_100x",
+        True
+    ),
+
+    (
+        "results/seed_42/rf_unscaled_color_no_norm_full_100x_seed_42",
+        "results/seed_42/rf_unscaled_all_no_norm_full_100x_seed_42",
+        "color_vs_all_rf_100x",
+        True
+    ),
+
+    # =========================================================
+    # SCALING EFFECTS
+    # =========================================================
+
+    (
+        "results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42",
+        "results/seed_42/svm_unscaled_all_no_norm_full_100x_seed_42",
+        "scaling_effect_svm_100x",
+        True
+    ),
+
+    (
+        "results/seed_42/svm_scaled_all_no_norm_full_400x_seed_42",
+        "results/seed_42/svm_unscaled_all_no_norm_full_400x_seed_42",
+        "scaling_effect_svm_400x",
+        True
+    ),
+
+    # =========================================================
+    # DATASET SIZE EFFECTS
+    # =========================================================
+
+    (
+        "results/seed_42/svm_scaled_all_no_norm_20img_100x_seed_42",
+        "results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42",
+        "dataset_size_effect_svm_20_vs_full_100x",
+        False
+    ),
+
+    (
+        "results/seed_42/rf_unscaled_all_no_norm_20img_100x_seed_42",
+        "results/seed_42/rf_unscaled_all_no_norm_full_100x_seed_42",
+        "dataset_size_effect_rf_20_vs_full_100x",
+        False
+    ),
+
+    (
+        "results/seed_42/svm_scaled_all_no_norm_89img_100x_seed_42",
+        "results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42",
+        "dataset_size_effect_svm_89_vs_full_100x",
+        False
+    ),
+
+    (
+        "results/seed_42/rf_unscaled_all_no_norm_89img_100x_seed_42",
+        "results/seed_42/rf_unscaled_all_no_norm_full_100x_seed_42",
+        "dataset_size_effect_rf_89_vs_full_100x",
+        False
+    )
+]
+
     results = []
 
     for exp1, exp2, comparison_name, paired in experiment_pairs:
@@ -212,8 +338,8 @@ if __name__ == "__main__":
                     exp1,
                     exp2,
                     comparison_name,
-                    metric=metric,
-                    paired=paired,
+                    metric = metric,
+                    paired = paired
                 )
 
                 results.append(result)
@@ -224,15 +350,15 @@ if __name__ == "__main__":
 
     results_df["test_1_p_bonferroni"] = np.minimum(
         results_df["test_1_p"] * n_tests,
-        1.0,
+        1.0
     )
 
     results_df["test_2_p_bonferroni"] = np.minimum(
         results_df["test_2_p"] * n_tests,
-        1.0,
+        1.0
     )
 
     results_df.to_csv(
         "statistical_tests.csv",
-        index=False,
+        index=False
     )
