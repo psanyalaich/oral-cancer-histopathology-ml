@@ -1,8 +1,6 @@
 import numpy as np
-
-from sklearn.model_selection import (
-    RepeatedStratifiedKFold,
-)
+from src.statistics_utils import verify_same_splits
+from sklearn.model_selection import RepeatedStratifiedKFold
 
 
 def test_no_train_test_overlap():
@@ -49,3 +47,10 @@ def test_class_balance_preserved():
             y_train.mean() -
             y_test.mean()
         ) < 0.1
+
+def test_verify_same_splits():
+    assert verify_same_splits(
+        "cv_splits/100X_89_439",
+        "cv_splits/100X_89_439"
+    )
+
