@@ -52,17 +52,17 @@ results/**
 !results/seed_42/
 
 # allow best svm outputs
-!results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/
-!results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/roc_curve.png
-!results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/pr_curve.png
-!results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/confusion_matrix_overall.png
-!results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/calibration_curve_fold_21.png
+!results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42
+!results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/roc_curve.png
+!results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/pr_curve.png
+!results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/confusion_matrix_overall.png
+!results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/calibration_curve_fold_21.png
 
 # allow best svm outputs
-!results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/
-!results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/feature_importance.png
-!results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/feature_correlation.png
-!results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/shap_summary.png
+!results/seed_42/rf_unscaled_color_no_norm_full_100x_seed_42/
+!results/seed_42/rf_unscaled_color_no_norm_full_100x_seed_42/feature_importance.png
+!results/seed_42/rf_unscaled_color_no_norm_full_100x_seed_42/feature_correlation.png
+!results/seed_42/rf_unscaled_color_no_norm_full_100x_seed_42/shap_summary.png
 
 # allow learning curves
 !results/learning_curve_auc.png
