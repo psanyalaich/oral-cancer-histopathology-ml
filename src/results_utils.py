@@ -1,14 +1,13 @@
 import os
 import csv
 import pandas as pd
+from configs.experiment_config import N_SPLITS
 from src.statistics_utils import confidence_interval
-
-CV_N_SPLITS = 5
 
 def initialize_summary_csv(summary_csv):
     if os.path.exists(summary_csv):
         return
-
+    
     with open(summary_csv, "w", newline = "") as f:
         writer = csv.writer(f)
 
@@ -54,7 +53,7 @@ def initialize_summary_csv(summary_csv):
 def save_fold_metrics(fold_df, results_dir):
     fold_df.to_csv(
         os.path.join(results_dir, "fold_metrics.csv"),
-        index=False
+        index = False
     )
 
     summary = fold_df.drop(
@@ -118,7 +117,7 @@ def write_metrics_txt(
 
             _, ci_low, ci_high = confidence_interval(
             fold_df[metric].values,
-            n_splits=CV_N_SPLITS
+            n_splits=N_SPLITS
         )
 
             f.write(
@@ -135,7 +134,7 @@ def append_summary_row(
 
     _, accuracy_ci_low, accuracy_ci_high = confidence_interval(
         fold_df["accuracy"].values,
-        n_splits=CV_N_SPLITS
+        n_splits = N_SPLITS
     )
 
     with open(summary_csv, "a", newline = "") as f:

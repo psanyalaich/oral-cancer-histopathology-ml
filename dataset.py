@@ -9,7 +9,8 @@ from src.preprocessing import (
     segment_tissue,
     normalize_staining,
     load_target_image,
-    create_reinhard_normalizer
+    create_reinhard_normalizer,
+    create_macenko_normalizer
 )
 
 
@@ -68,9 +69,14 @@ def build_dataset(
 
     normalizer = None
 
-    if stain_normalization == "reinhard":
+    if stain_normalization in ["reinhard", "macenko"]:
         target_image = load_target_image()
-        normalizer = create_reinhard_normalizer(target_image)
+
+        if stain_normalization == "reinhard":
+            normalizer = create_reinhard_normalizer(target_image)
+
+        elif stain_normalization == "macenko":
+            normalizer = create_macenko_normalizer(target_image)
 
     # NORMAL LOOP
     for filename in normal_files:
@@ -120,7 +126,7 @@ def build_dataset(
                 img = normalize_staining(
                     img,
                     method = stain_normalization,
-                    normalizer = target_image
+                    normalizer = normalizer
                 )
 
             mask = segment_tissue(img)

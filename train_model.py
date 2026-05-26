@@ -11,7 +11,7 @@ from experiments import EXPERIMENTS
 from src.features import get_feature_names
 from src.experiment_runner import run_fold
 from src.rf_analysis import run_rf_analysis
-from configs.experiment_config import N_FOLDS
+from configs.experiment_config import N_SPLITS
 from src.cache_utils import get_or_cache_dataset
 from src.evaluation_utils import save_overall_evaluation
 from src.learning_curve_analysis import plot_learning_curve
@@ -134,7 +134,7 @@ def run_experiment(config):
         f"seed_{SEED}"
     )
 
-    for fold in range(1, N_FOLDS + 1):
+    for fold in range(1, N_SPLITS + 1):
         try:
             result = run_fold(
                 fold=fold,

@@ -73,9 +73,12 @@ def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric = "accuracy"
         same_splits = verify_same_splits(exp1_dir, exp2_dir)
 
         if not same_splits:
-            raise ValueError(
-                "Paired comparison requires identical CV splits."
+            print(
+                "Warning: identical split files unavailable. "
+                "Falling back to unpaired tests."
             )
+
+            paired = False
         
         test_fraction = TEST_FRACTION
 

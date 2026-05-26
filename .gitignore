@@ -42,6 +42,7 @@ backbone/
 # notes
 OSCC_Development_Notes.md
 issues.md
+checklist.md
 
 # ignore everything in results
 results/**

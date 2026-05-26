@@ -280,15 +280,21 @@ oral-cancer-histopathology-ml/
 
 ## Example Outputs
 
-### Best SVM Configuration: ```svm_scaled_all_no_norm_full_100x_seed_42```
+### Best Output: 
+| Model | Features    | Magnification | Accuracy | AUC   | MCC   |
+| ----- | ----------- | ------------- | -------- | ----- | ----- |
+| SVM   | Color + LBP | 100x          | 0.900    | 0.958 | 0.696 |
+
+
+### Best SVM Configuration: ```svm_scaled_color_lbp_no_norm_full_100x_seed_42```
 
 | ROC Curve                             | Precision-Recall Curve                             | Confusion Matrix                             | Calibration Plot                             |
 | --------------------------------------- | ------------------------------------- | --------------------------------------- | ------------------------------------- |
-| ![ROC Curve](results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/roc_curve.png) | ![PR Curve](results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/pr_curve.png) | ![Confusion Matrix](results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/confusion_matrix_overall.png) | ![Calibration Plot](results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/calibration_curve_fold_21.png) |
+| ![ROC Curve](results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/roc_curve.png) | ![PR Curve](results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/pr_curve.png) | ![Confusion Matrix](results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/confusion_matrix_overall.png) | ![Calibration Plot](results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/calibration_curve_fold_5.png) |
 
 ---
 
-### Best Random Forest Configuration: ```rf_unscaled_haralick_reinhard_full_100x_seed_42```
+### Best Random Forest Configuration: ```rf_unscaled_color_no_norm_full_100x_seed_42```
 | Feature Correlation                             | Feature Importance                             | SHAP Explainability (Random Forest)                             |
 | --------------------------------------- | ------------------------------------- | ------------------------------------- |
 | ![Feature Correlation](results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/feature_correlation.png)   |  ![Feature Importance](results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/feature_importance.png)    | ![SHAP Summary](results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/shap_summary.png)
@@ -311,13 +317,16 @@ Initial experiments suggest:
 - calibration analysis is important for medical ML evaluation
 
 ## Statistical Findings
-Statistical testing revealed:
-- significant performance differences between 100x and 400x magnifications
-- significant improvements from feature scaling in SVM models
-- strong contribution of Haralick texture descriptors
-- substantial instability in smaller datasets
-- limited measurable effect from Reinhard stain normalization under current settings
-- Detailed statistical outputs are available in: `statistical_tests.csv`
+Statistical comparison experiments suggest:
+- SVM models generally outperform Random Forest models across most configurations
+- 100x magnification frequently produces stronger performance than 400x
+- combined handcrafted feature sets outperform isolated texture descriptors
+- Haralick-only feature configurations are significantly weaker than fused feature representations in several settings
+- stain normalization produced limited measurable improvement under the current experimental setup
+- small dataset subsets exhibit substantially higher variance and instability
+- several observed performance differences did not remain statistically significant after multiple-comparison correction, highlighting limited statistical power under 5-fold evaluation
+- Detailed statistical outputs are available in:
+`statistical_tests.csv`
 
 ## Best Performing Configurations
 | Experiment | Model | Features | Magnification | Stain Norm | Mean AUC | Mean F1 |

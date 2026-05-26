@@ -3,7 +3,10 @@ import numpy as np
 from dataset import build_dataset
 from experiments import EXPERIMENTS
 from sklearn.model_selection import RepeatedStratifiedKFold
-
+from configs.experiment_config import (
+    N_SPLITS,
+    N_REPEATS
+)
 
 def generate_splits():
     generated = set()
@@ -47,8 +50,8 @@ def generate_splits():
         os.makedirs(split_dir, exist_ok = True)
 
         rskf = RepeatedStratifiedKFold(
-            n_splits = 5,
-            n_repeats = 5,
+            n_splits = N_SPLITS,
+            n_repeats = N_REPEATS,
             random_state = seed
         )
 
