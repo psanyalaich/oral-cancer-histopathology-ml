@@ -339,15 +339,21 @@ oral-cancer-histopathology-ml/
 
 ## Example Outputs
 
-### Best SVM Configuration: ```svm_scaled_all_no_norm_full_100x_seed_42```
+### Best Output: 
+| Model | Features    | Magnification | Accuracy | AUC   | MCC   |
+| ----- | ----------- | ------------- | -------- | ----- | ----- |
+| SVM   | Color + LBP | 100x          | 0.900    | 0.958 | 0.696 |
+
+
+### Best SVM Configuration: ```svm_scaled_color_lbp_no_norm_full_100x_seed_42```
 
 | ROC Curve                             | Precision-Recall Curve                             | Confusion Matrix                             | Calibration Plot                             |
 | --------------------------------------- | ------------------------------------- | --------------------------------------- | ------------------------------------- |
-| ![ROC Curve](results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/roc_curve.png) | ![PR Curve](results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/pr_curve.png) | ![Confusion Matrix](results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/confusion_matrix_overall.png) | ![Calibration Plot](results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/calibration_curve_fold_21.png) |
+| ![ROC Curve](results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/roc_curve.png) | ![PR Curve](results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/pr_curve.png) | ![Confusion Matrix](results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/confusion_matrix_overall.png) | ![Calibration Plot](results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/calibration_curve_fold_5.png) |
 
 ---
 
-### Best Random Forest Configuration: ```rf_unscaled_haralick_reinhard_full_100x_seed_42```
+### Best Random Forest Configuration: ```rf_unscaled_color_no_norm_full_100x_seed_42```
 | Feature Correlation                             | Feature Importance                             | SHAP Explainability (Random Forest)                             |
 | --------------------------------------- | ------------------------------------- | ------------------------------------- |
 | ![Feature Correlation](results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/feature_correlation.png)   |  ![Feature Importance](results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/feature_importance.png)    | ![SHAP Summary](results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/shap_summary.png)
@@ -370,13 +376,16 @@ Initial experiments suggest:
 - calibration analysis is important for medical ML evaluation
 
 ## Statistical Findings
-Statistical testing revealed:
-- significant performance differences between 100x and 400x magnifications
-- significant improvements from feature scaling in SVM models
-- strong contribution of Haralick texture descriptors
-- substantial instability in smaller datasets
-- limited measurable effect from Reinhard stain normalization under current settings
-- Detailed statistical outputs are available in: `statistical_tests.csv`
+Statistical comparison experiments suggest:
+- SVM models generally outperform Random Forest models across most configurations
+- 100x magnification frequently produces stronger performance than 400x
+- combined handcrafted feature sets outperform isolated texture descriptors
+- Haralick-only feature configurations are significantly weaker than fused feature representations in several settings
+- stain normalization produced limited measurable improvement under the current experimental setup
+- small dataset subsets exhibit substantially higher variance and instability
+- several observed performance differences did not remain statistically significant after multiple-comparison correction, highlighting limited statistical power under 5-fold evaluation
+- Detailed statistical outputs are available in:
+`statistical_tests.csv`
 
 ## Best Performing Configurations
 | Experiment | Model | Features | Magnification | Stain Norm | Mean AUC | Mean F1 |
@@ -582,7 +591,8 @@ from src.preprocessing import (
     segment_tissue,
     normalize_staining,
     load_target_image,
-    create_reinhard_normalizer
+    create_reinhard_normalizer,
+    create_macenko_normalizer
 )
 
 
@@ -641,9 +651,14 @@ def build_dataset(
 
     normalizer = None
 
-    if stain_normalization == "reinhard":
+    if stain_normalization in ["reinhard", "macenko"]:
         target_image = load_target_image()
-        normalizer = create_reinhard_normalizer(target_image)
+
+        if stain_normalization == "reinhard":
+            normalizer = create_reinhard_normalizer(target_image)
+
+        elif stain_normalization == "macenko":
+            normalizer = create_macenko_normalizer(target_image)
 
     # NORMAL LOOP
     for filename in normal_files:
@@ -693,7 +708,7 @@ def build_dataset(
                 img = normalize_staining(
                     img,
                     method = stain_normalization,
-                    normalizer = target_image
+                    normalizer = normalizer
                 )
 
             mask = segment_tissue(img)
@@ -1190,7 +1205,10 @@ import numpy as np
 from dataset import build_dataset
 from experiments import EXPERIMENTS
 from sklearn.model_selection import RepeatedStratifiedKFold
-
+from configs.experiment_config import (
+    N_SPLITS,
+    N_REPEATS
+)
 
 def generate_splits():
     generated = set()
@@ -1234,8 +1252,8 @@ def generate_splits():
         os.makedirs(split_dir, exist_ok = True)
 
         rskf = RepeatedStratifiedKFold(
-            n_splits = 5,
-            n_repeats = 5,
+            n_splits = N_SPLITS,
+            n_repeats = N_REPEATS,
             random_state = seed
         )
 
@@ -2565,14 +2583,13 @@ def normalize_staining(
 import os
 import csv
 import pandas as pd
+from configs.experiment_config import N_SPLITS
 from src.statistics_utils import confidence_interval
-
-CV_N_SPLITS = 5
 
 def initialize_summary_csv(summary_csv):
     if os.path.exists(summary_csv):
         return
-
+    
     with open(summary_csv, "w", newline = "") as f:
         writer = csv.writer(f)
 
@@ -2618,7 +2635,7 @@ def initialize_summary_csv(summary_csv):
 def save_fold_metrics(fold_df, results_dir):
     fold_df.to_csv(
         os.path.join(results_dir, "fold_metrics.csv"),
-        index=False
+        index = False
     )
 
     summary = fold_df.drop(
@@ -2682,7 +2699,7 @@ def write_metrics_txt(
 
             _, ci_low, ci_high = confidence_interval(
             fold_df[metric].values,
-            n_splits=CV_N_SPLITS
+            n_splits=N_SPLITS
         )
 
             f.write(
@@ -2699,7 +2716,7 @@ def append_summary_row(
 
     _, accuracy_ci_low, accuracy_ci_high = confidence_interval(
         fold_df["accuracy"].values,
-        n_splits=CV_N_SPLITS
+        n_splits = N_SPLITS
     )
 
     with open(summary_csv, "a", newline = "") as f:
@@ -2858,22 +2875,30 @@ def confidence_interval(
         mean + margin
     )
 
-def verify_same_splits(exp1_dir, exp2_dir, n_folds=25):
+def verify_same_splits(exp1_dir, exp2_dir, n_folds=5):
+
     for fold in range(1, n_folds + 1):
 
-        exp1_test = np.load(
-            os.path.join(
-                exp1_dir,
-                f"test_idx_fold_{fold}.npy"
-            )
+        exp1_path = os.path.join(
+            exp1_dir,
+            f"test_idx_fold_{fold}.npy"
         )
 
-        exp2_test = np.load(
-            os.path.join(
-                exp2_dir,
-                f"test_idx_fold_{fold}.npy"
-            )
+        exp2_path = os.path.join(
+            exp2_dir,
+            f"test_idx_fold_{fold}.npy"
         )
+
+        if not os.path.exists(exp1_path):
+            print(f"Missing split file: {exp1_path}")
+            return False
+
+        if not os.path.exists(exp2_path):
+            print(f"Missing split file: {exp2_path}")
+            return False
+
+        exp1_test = np.load(exp1_path)
+        exp2_test = np.load(exp2_path)
 
         if not np.array_equal(exp1_test, exp2_test):
             return False
@@ -3160,9 +3185,12 @@ def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric = "accuracy"
         same_splits = verify_same_splits(exp1_dir, exp2_dir)
 
         if not same_splits:
-            raise ValueError(
-                "Paired comparison requires identical CV splits."
+            print(
+                "Warning: identical split files unavailable. "
+                "Falling back to unpaired tests."
             )
+
+            paired = False
         
         test_fraction = TEST_FRACTION
 
@@ -3883,7 +3911,7 @@ from experiments import EXPERIMENTS
 from src.features import get_feature_names
 from src.experiment_runner import run_fold
 from src.rf_analysis import run_rf_analysis
-from configs.experiment_config import N_FOLDS
+from configs.experiment_config import N_SPLITS
 from src.cache_utils import get_or_cache_dataset
 from src.evaluation_utils import save_overall_evaluation
 from src.learning_curve_analysis import plot_learning_curve
@@ -4006,7 +4034,7 @@ def run_experiment(config):
         f"seed_{SEED}"
     )
 
-    for fold in range(1, N_FOLDS + 1):
+    for fold in range(1, N_SPLITS + 1):
         try:
             result = run_fold(
                 fold=fold,
