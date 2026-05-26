@@ -1,8 +1,9 @@
 import os
 import csv
 import pandas as pd
-
 from src.statistics_utils import confidence_interval
+
+CV_N_SPLITS = 5
 
 def initialize_summary_csv(summary_csv):
     if os.path.exists(summary_csv):
@@ -116,8 +117,9 @@ def write_metrics_txt(
             std_value = fold_df[metric].std()
 
             _, ci_low, ci_high = confidence_interval(
-                fold_df[metric].values
-            )
+            fold_df[metric].values,
+            n_splits=CV_N_SPLITS
+        )
 
             f.write(
                 f"{metric}: "
@@ -132,7 +134,8 @@ def append_summary_row(
 ):
 
     _, accuracy_ci_low, accuracy_ci_high = confidence_interval(
-        fold_df["accuracy"].values
+        fold_df["accuracy"].values,
+        n_splits=CV_N_SPLITS
     )
 
     with open(summary_csv, "a", newline = "") as f:

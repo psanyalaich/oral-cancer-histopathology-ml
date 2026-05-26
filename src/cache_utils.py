@@ -2,7 +2,7 @@ import pickle
 from pathlib import Path
 from dataset import build_dataset
 
-CACHE_VERSION = "v1"
+CACHE_VERSION = "v2"
 
 def get_or_cache_dataset(
     magnification,
@@ -11,7 +11,6 @@ def get_or_cache_dataset(
     feature_set,
     cache_dir="feature_cache",
     stain_normalization = None,
-    target_image = None,
     seed = None
     ):
 
@@ -41,9 +40,8 @@ def get_or_cache_dataset(
         num_tumour = num_tumour,
         feature_set = feature_set,
         stain_normalization = stain_normalization,
-        target_image = target_image,
         seed = seed
-        )
+    )
 
     cache_path.parent.mkdir(exist_ok = True)
 

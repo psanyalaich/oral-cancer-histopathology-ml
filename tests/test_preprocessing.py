@@ -2,7 +2,8 @@ import numpy as np
 
 from src.preprocessing import (
     segment_tissue,
-    normalize_staining
+    normalize_staining,
+    create_reinhard_normalizer
 )
 
 def test_segment_tissue_returns_mask(sample_image):
@@ -24,3 +25,19 @@ def test_normalize_staining_none(sample_image):
     )
 
     assert normalized.shape == (512, 512, 3)
+
+def test_reinhard_changes_image(sample_image):
+    normalizer = create_reinhard_normalizer(sample_image)
+
+    normalized = normalize_staining(
+        sample_image,
+        method = "reinhard",
+        normalizer = normalizer
+    )
+
+    assert normalized.shape == sample_image.shape
+
+    assert not np.array_equal(
+        normalized,
+        sample_image
+    )

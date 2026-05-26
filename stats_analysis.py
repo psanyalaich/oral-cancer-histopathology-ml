@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import pandas as pd
 from src.statistics_utils import verify_same_splits
@@ -10,6 +9,9 @@ from scipy.stats import (
     mannwhitneyu
 )
 
+CV_N_SPLITS = 5
+TEST_FRACTION = 1.0 / CV_N_SPLITS
+
 def load_fold_metric(results_dir, metric = "accuracy"):
     df = pd.read_csv(f"{results_dir}/fold_metrics.csv")
     return df.sort_values("fold")[metric].values
@@ -17,7 +19,7 @@ def load_fold_metric(results_dir, metric = "accuracy"):
 def paired_ttest_corrected(
     a: np.ndarray,
     b: np.ndarray,
-    n_test: int
+    test_fraction: float
     ):
     
     diff = np.asarray(a) - np.asarray(b)
@@ -27,10 +29,10 @@ def paired_ttest_corrected(
     mean_diff = diff.mean()
     std_diff = diff.std(ddof = 1)
 
-    if std_diff == 0:
+    if np.isclose(std_diff, 0):
         return 0.0, 1.0
 
-    rho = 1.0 / n_test
+    rho = test_fraction
 
     corrected_se = std_diff * np.sqrt((1.0 / n) + (rho / (1.0 - rho)))
 
@@ -64,16 +66,23 @@ def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric = "accuracy"
     a = load_fold_metric(exp1_dir, metric)
     b = load_fold_metric(exp2_dir, metric)
 
-    if len(a) != len(b):
+    if paired and len(a) != len(b):
         raise ValueError("Experiments must have the same number of folds.")
 
     if paired:
-        n_test = 5
+        same_splits = verify_same_splits(exp1_dir, exp2_dir)
+
+        if not same_splits:
+            raise ValueError(
+                "Paired comparison requires identical CV splits."
+            )
+        
+        test_fraction = TEST_FRACTION
 
         t_stat, t_p = paired_ttest_corrected(
             a,
             b,
-            n_test = n_test
+            test_fraction = test_fraction
         )
 
         diff = a - b
@@ -81,7 +90,12 @@ def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric = "accuracy"
         if np.allclose(diff, 0):
             w_stat, w_p = 0.0, 1.0
         else:
-            w_stat, w_p = wilcoxon(a, b)
+            w_stat, w_p = wilcoxon(
+                a,
+                b,
+                zero_method = "wilcox",
+                alternative = "two-sided"
+            )
 
         test_name_1 = "Corrected paired t-test"
         test_name_2 = "Wilcoxon signed-rank test"
@@ -94,10 +108,30 @@ def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric = "accuracy"
         test_name_1 = "Welch's t-test"
         test_name_2 = "Mann-Whitney U test"
 
-    if diff.std(ddof = 1) == 0:
-        effect_size = 0.0
+    if paired:
+        if np.isclose(diff.std(ddof = 1), 0):
+            effect_size = 0.0
+        else:
+            effect_size = (
+                diff.mean() /
+                diff.std(ddof = 1)
+            )
+
     else:
-        effect_size = diff.mean() / diff.std(ddof = 1)
+        pooled_std = np.sqrt(
+            (
+                ((len(a) - 1) * a.var(ddof = 1)) +
+                ((len(b) - 1) * b.var(ddof = 1))
+            ) / (len(a) + len(b) - 2)
+        )
+
+        if np.isclose(pooled_std, 0):
+            effect_size = 0.0
+        else:
+            effect_size = (
+                (a.mean() - b.mean()) /
+                pooled_std
+            )
 
     print(f"\nMetric: {metric}")
     print(f"{exp1_dir}: mean = {a.mean():.4f}, std = {a.std(ddof = 1):.4f}")
@@ -110,7 +144,7 @@ def compare_experiments(exp1_dir, exp2_dir, comparison_name, metric = "accuracy"
         f"{test_name_2}: "
         f"statistic = {w_stat:.4f}, p = {w_p:.6f}"
     )
-    print(f"Effect size (Cohen's d approximation): {effect_size:.4f}")
+    print(f"Effect size (standardized mean difference): {effect_size:.4f}")
 
     return {
         "comparison": comparison_name,

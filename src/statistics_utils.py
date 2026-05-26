@@ -2,7 +2,7 @@ import os
 import numpy as np
 from scipy.stats import t
 
-def confidence_interval(values, confidence=0.95):
+def confidence_interval_naive(values, confidence=0.95):
     values = np.asarray(values)
 
     n = len(values)
@@ -20,9 +20,9 @@ def confidence_interval(values, confidence=0.95):
         mean + margin
     )
 
-def confidence_interval_corrected(
+def confidence_interval(
     values: np.ndarray,
-    n_test: int,
+    n_splits: int,
     confidence: float = 0.95
     ):
 
@@ -33,7 +33,7 @@ def confidence_interval_corrected(
     mean = np.mean(values)
     std = values.std(ddof=1)
 
-    rho = 1.0 / n_test
+    rho = 1.0 / n_splits
 
     corrected_se = std * np.sqrt(
         (1.0 / n) + (rho / (1.0 - rho))

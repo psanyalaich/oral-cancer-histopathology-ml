@@ -33,6 +33,8 @@ HARALICK_FEATURE_NAMES = [
     "haralick_homogeneity"
 ]
 
+MIN_HARALICK_TISSUE_DENSITY = 0.70
+
 FEATURE_GROUPS = {
     "color": ["color"],
     "lbp": ["lbp"],
@@ -123,7 +125,6 @@ def extract_lbp_features(img, mask):
 
 def extract_haralick_features(img, mask):
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-
     tissue_fraction = np.mean(mask > 0)
 
     if tissue_fraction < MIN_TISSUE_FRACTION:
@@ -140,11 +141,24 @@ def extract_haralick_features(img, mask):
     cropped_gray = gray[y_min:y_max + 1, x_min:x_max + 1]
     cropped_mask = mask[y_min:y_max + 1, x_min:x_max + 1]
 
-    if np.mean(cropped_mask > 0) < 0.25:
+    rows_t, cols_t = np.where(cropped_mask > 0)
+
+    if len(rows_t) == 0:
         return [0.0, 0.0, 0.0, 0.0]
-    
-    tissue_gray = cropped_gray.copy()
-    tissue_gray[cropped_mask == 0] = 0
+
+    y0, y1 = rows_t.min(), rows_t.max()
+    x0, x1 = cols_t.min(), cols_t.max()
+
+    tight_gray = cropped_gray[y0:y1 + 1, x0:x1 + 1]
+    tight_mask = cropped_mask[y0:y1 + 1, x0:x1 + 1]
+
+    tissue_density = np.mean(tight_mask > 0)
+
+    if tissue_density < 0.70:
+        return [0.0, 0.0, 0.0, 0.0]
+
+    tissue_gray = tight_gray.copy()
+    tissue_gray[tight_mask == 0] = 0
 
     tissue_gray = (tissue_gray // 16).astype(np.uint8)
 
@@ -159,7 +173,13 @@ def extract_haralick_features(img, mask):
 
     features = []
 
-    for prop in ["contrast", "correlation", "energy", "homogeneity"]:
+    for prop in [
+        "contrast",
+        "correlation",
+        "energy",
+        "homogeneity"
+    ]:
+
         value = graycoprops(glcm, prop).mean()
         features.append(float(value))
 

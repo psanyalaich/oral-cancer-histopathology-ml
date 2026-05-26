@@ -76,10 +76,65 @@ def compute_lbp(gray):
 
 # HARALICK FEATURES
 def compute_haralick(gray, mask):
-
     tissue_fraction = np.mean(mask > 0)
 
     if tissue_fraction < MIN_TISSUE_FRACTION:
+        return {
+            "contrast": 0.0,
+            "correlation": 0.0,
+            "energy": 0.0,
+            "homogeneity": 0.0
+        }
+
+    ys, xs = np.where(mask > 0)
+
+    if len(xs) == 0 or len(ys) == 0:
+        return {
+            "contrast": 0.0,
+            "correlation": 0.0,
+            "energy": 0.0,
+            "homogeneity": 0.0
+        }
+ 
+    x_min, x_max = xs.min(), xs.max()
+    y_min, y_max = ys.min(), ys.max()
+
+    cropped_gray = gray[
+        y_min:y_max + 1,
+        x_min:x_max + 1
+    ]
+
+    cropped_mask = mask[
+        y_min:y_max + 1,
+        x_min:x_max + 1
+    ]
+
+    rows_t, cols_t = np.where(cropped_mask > 0)
+
+    if len(rows_t) == 0:
+        return {
+            "contrast": 0.0,
+            "correlation": 0.0,
+            "energy": 0.0,
+            "homogeneity": 0.0
+        }
+ 
+    y0, y1 = rows_t.min(), rows_t.max()
+    x0, x1 = cols_t.min(), cols_t.max()
+
+    tight_gray = cropped_gray[
+        y0:y1 + 1,
+        x0:x1 + 1
+    ]
+
+    tight_mask = cropped_mask[
+        y0:y1 + 1,
+        x0:x1 + 1
+    ]
+
+    tissue_density = np.mean(tight_mask > 0)
+
+    if tissue_density < 0.70:
 
         return {
             "contrast": 0.0,
@@ -88,14 +143,14 @@ def compute_haralick(gray, mask):
             "homogeneity": 0.0
         }
 
-    masked = gray.copy()
+    tissue_gray = tight_gray.copy()
+    tissue_gray[tight_mask == 0] = 0
 
-    masked[mask == 0] = 0
-
-    quantized = (masked // 16).astype(np.uint8)
+    # Quantize to 16 gray levels
+    tissue_gray = (tissue_gray // 16).astype(np.uint8)
 
     glcm = graycomatrix(
-        quantized,
+        tissue_gray,
         distances = [1],
         angles = [0, np.pi/4, np.pi/2, 3*np.pi/4],
         levels = 16,
@@ -112,10 +167,9 @@ def compute_haralick(gray, mask):
         "homogeneity"
     ]:
 
-        features[prop] = graycoprops(
-            glcm,
-            prop
-        ).mean()
+        features[prop] = float(
+            graycoprops(glcm, prop).mean()
+        )
 
     return features
 
@@ -151,11 +205,7 @@ def show_pipeline(image_path, title="IMAGE"):
     resized, gray, mask, tissue = preprocess_image(img)
     edges = compute_edges(gray)
     haralick = compute_haralick(gray, mask)
-
-    color_features = compute_color_features(
-        resized,
-        mask
-    )
+    color_features = compute_color_features(resized, mask)
 
     print("\nColor Features:")
 
@@ -237,24 +287,24 @@ if __name__ == "__main__":
 
     # 100x normal
     show_pipeline(
-        "data/demo_oscc/Normal_100x_45.jpg",
+        "data/100x/normal/Normal_100x_45.jpg",
         "100x NORMAL"
     )
 
     # 100 tumour
     show_pipeline(
-        "data/demo_oscc/OSCC_100x_363.jpg",
+        "data/100x/tumour/OSCC_100x_363.jpg",
         "100x TUMOUR"
     )
 
     # 400x normal
     show_pipeline(
-        "data/demo_oscc/Normal_400x_153.jpg",
+        "data/400x/normal/Normal_400x_153.jpg",
         "400x NORMAL"
     )
 
     # 400x tumour
     show_pipeline(
-        "data/demo_oscc/OSCC_400x_15.jpg",
+        "data/400x/tumour/OSCC_400x_15.jpg",
         "400x TUMOUR"
     )

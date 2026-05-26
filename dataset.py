@@ -8,6 +8,8 @@ from src.preprocessing import (
     load_image, 
     segment_tissue,
     normalize_staining,
+    load_target_image,
+    create_reinhard_normalizer
 )
 
 
@@ -46,7 +48,6 @@ def build_dataset(
     num_tumour = None,
     feature_set = "all",
     stain_normalization = None,
-    target_image = None,
     seed=42
     ):
     
@@ -65,6 +66,12 @@ def build_dataset(
     image_paths = []
     seen_hashes = set()
 
+    normalizer = None
+
+    if stain_normalization == "reinhard":
+        target_image = load_target_image()
+        normalizer = create_reinhard_normalizer(target_image)
+
     # NORMAL LOOP
     for filename in normal_files:
         path = os.path.join(normal_dir, filename)
@@ -80,7 +87,7 @@ def build_dataset(
                 img = normalize_staining(
                     img,
                     method = stain_normalization,
-                    target_image = target_image
+                    normalizer = normalizer
                 )
 
             mask = segment_tissue(img)
@@ -113,7 +120,7 @@ def build_dataset(
                 img = normalize_staining(
                     img,
                     method = stain_normalization,
-                    target_image = target_image
+                    normalizer = target_image
                 )
 
             mask = segment_tissue(img)
