@@ -83,6 +83,16 @@ The study evaluates:
 
 The long-term objective is to establish strong classical ML baselines before transitioning to deep learning and domain generalization experiments.
 
+## Summary
+| Category              | Best Configuration                                | Key Result             |
+| --------------------- | ------------------------------------------------- | ---------------------- |
+| Best Overall          | `svm_scaled_all_no_norm_full_100x_seed_42`        | AUC ~0.986             |
+| Best RF               | `rf_unscaled_haralick_reinhard_full_100x_seed_42` | F1 ~0.92               |
+| Best Magnification    | 100x                                              | Consistently strongest |
+| Best Feature Strategy | Combined handcrafted descriptors                  | Highest discrimination |
+| Best Dataset Regime   | Full dataset                                      | Lowest variance        |
+
+
 ## Dataset
 - [Histopathological imaging database for Oral Cancer analysis](https://data.mendeley.com/datasets/ftmp4cvtmb/2)
 - DOI: `10.17632/ftmp4cvtmb.2`
@@ -101,11 +111,14 @@ Magnifications used:
 ## Experiment Scale
 
 The current pipeline includes:
-- 252 completed experiments
+- 300+ completed experiments
 - repeated stratified cross-validation
 - multiple dataset sizes
 - handcrafted feature combination benchmarking
 - stain normalization comparisons
+  - no normalization
+  - Reinhard normalization
+  - Macenko normalization
 - scaling vs non-scaling comparisons
 - Random Forest and SVM benchmarking
 - calibration analysis
@@ -284,38 +297,6 @@ This limitation is explicitly acknowledged during interpretation of results.
 | MCC | 
 | Brier score |
 
-## Repository Structure
-```text
-oral-cancer-histopathology-ml/
-│
-├── src/
-│   ├── dataset.py
-│   ├── feature_extraction.py
-│   ├── experiment_runner.py
-│   ├── explainability.py
-│   ├── evaluation.py
-│   ├── learning_curve_analysis.py
-│   ├── model_utils.py
-│   ├── plotting.py
-│   ├── results_utils.py
-│   ├── statistics_utils.py
-│   └── visualize_results.py
-│
-├── results/
-│   └── seed_42/
-│       ├── experiment_1/
-│       ├── experiment_2/
-│       └── ...
-│
-├── feature_cache/
-├── cv_splits/
-├── data/
-├── train_model.py
-├── rebuild_summary.py
-├── stats_analysis.py
-└── requirements.txt
-```
-
 ## Installation
 - Clone Repository: 
     - ```git clone https://github.com/yourusername/oral-cancer-histopathology-ml.git```
@@ -337,26 +318,33 @@ oral-cancer-histopathology-ml/
 | --------------------------------------- | ------------------------------------- | --------------------------------------- | ------------------------------------- |
 | ![](data/100x/normal/Normal_100x_1.jpg) | ![](data/100x/tumour/OSCC_100x_1.jpg) | ![](data/400x/normal/Normal_400x_1.jpg) | ![](data/400x/tumour/OSCC_400x_1.jpg) |
 
-## Example Outputs
 
-### Best Output: 
-| Model | Features    | Magnification | Accuracy | AUC   | MCC   |
-| ----- | ----------- | ------------- | -------- | ----- | ----- |
-| SVM   | Color + LBP | 100x          | 0.900    | 0.958 | 0.696 |
+## Current Best Classical ML Configuration
 
+The strongest observed configuration under the current evaluation setup is:
+- Model: SVM (RBF)
+- Features: Combined handcrafted descriptors
+- Magnification: 100x
+- Stain normalization: None
+- Mean AUC: ~0.98
+- Mean F1-score: ~0.94
 
-### Best SVM Configuration: ```svm_scaled_color_lbp_no_norm_full_100x_seed_42```
-
-| ROC Curve                             | Precision-Recall Curve                             | Confusion Matrix                             | Calibration Plot                             |
-| --------------------------------------- | ------------------------------------- | --------------------------------------- | ------------------------------------- |
-| ![ROC Curve](results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/roc_curve.png) | ![PR Curve](results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/pr_curve.png) | ![Confusion Matrix](results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/confusion_matrix_overall.png) | ![Calibration Plot](results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/calibration_curve_fold_5.png) |
+This suggests that fused handcrafted descriptors combined with feature scaling remain highly competitive under controlled experimental settings.
 
 ---
 
-### Best Random Forest Configuration: ```rf_unscaled_color_no_norm_full_100x_seed_42```
-| Feature Correlation                             | Feature Importance                             | SHAP Explainability (Random Forest)                             |
-| --------------------------------------- | ------------------------------------- | ------------------------------------- |
-| ![Feature Correlation](results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/feature_correlation.png)   |  ![Feature Importance](results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/feature_importance.png)    | ![SHAP Summary](results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/shap_summary.png)
+### Best SVM Configuration: ```svm_scaled_all_no_norm_full_100x_seed_42```
+
+| ROC Curve                             | Precision-Recall Curve                             | Confusion Matrix                             | Calibration Plot                             |
+| --------------------------------------- | ------------------------------------- | --------------------------------------- | ------------------------------------- |
+| ![ROC Curve](results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/roc_curve.png) | ![PR Curve](results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/pr_curve.png) | ![Confusion Matrix](results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/confusion_matrix_overall.png) | ![Calibration Plot](results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/calibration_curve_fold_2.png) |
+
+---
+
+### Best Random Forest Configuration: ```rf_unscaled_haralick_reinhard_full_100x_seed_42```
+| SHAP Explainability (Random Forest)                             |
+| ------------------------------------- |
+| ![SHAP Summary](results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/shap_summary.png)
 
 ---
 
@@ -374,6 +362,9 @@ Initial experiments suggest:
 - class imbalance strongly affects specificity
 - small datasets produce unstable fold variance
 - calibration analysis is important for medical ML evaluation
+- learning curves suggest substantial performance stabilization as dataset size increases
+- variance decreases significantly with larger training sets
+- performance improvements begin plateauing at higher sample counts
 
 ## Statistical Findings
 Statistical comparison experiments suggest:
@@ -419,33 +410,9 @@ Key observations during development:
 - automated experiment management prevents manual tracking errors
 - cached feature extraction dramatically improves iteration speed
 - summary CSV rebuilding is important for interrupted experiments
-
-## Current Development Status
-
-### Implemented
-- preprocessing pipeline
-- handcrafted feature extraction
-- experiment automation
-- cross-validation benchmarking
-- statistical testing
-- calibration analysis
-- learning curve analysis
-- feature caching system
-- duplicate detection
-- explainability analysis
-
-### In Progress
-- seed stability analysis
-- stain normalization benchmarking
-- experiment optimization
-- robustness evaluation
-
-### Planned
-- deep learning benchmarking
-- HistoSet integration
-- pancreatic histopathology experiments
-- domain generalization analysis
-- external dataset evaluation
+- dataset filtering changes require regeneration of deterministic CV splits
+- cached feature datasets and split indices must remain synchronized
+- preprocessing-based sample rejection can silently invalidate stored split indices
 
 ## Limitations
 - no patient-wise splitting available
@@ -455,17 +422,6 @@ Key observations during development:
 - handcrafted descriptors cannot capture all morphology patterns
 - possible hidden patient-level leakage due to image-level splitting
 - stain normalization benchmarking still ongoing
-
-## Future Directions
-Planned future work:
-- CNN benchmarking
-- transfer learning experiments
-- attention-based architectures
-- domain adaptation
-- multi-magnification fusion
-- external validation datasets
-- pathology foundation models
-- handcrafted vs deep feature comparison
 
 ## Citation
 If you use this repository, please cite the original dataset creators.
@@ -479,7 +435,7 @@ If you use this repository, please cite the original dataset creators.
 
 ---
 
-Date Updated: <!--LAST_UPDATED--> 26-05-2026
+Date Updated: <!--LAST_UPDATED--> 27-05-2026
 
 ---
 
@@ -576,185 +532,6 @@ STAIN_NORMALIZATION_TARGET_IMAGE = ("data/target_stain_image.jpg")
 ---
 
 # .
-
-## dataset.py
-
-```python
-import os
-import numpy as np
-import pandas as pd
-from src.features import extract_features
-from src.data_quality import run_quality_checks
-
-from src.preprocessing import (
-    load_image, 
-    segment_tissue,
-    normalize_staining,
-    load_target_image,
-    create_reinhard_normalizer,
-    create_macenko_normalizer
-)
-
-
-IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"}
-
-def _list_image_files(folder):
-    if not os.path.isdir(folder):
-        raise FileNotFoundError(f"Folder not found: {folder}")
-
-    files = []
-    for name in sorted(os.listdir(folder)):
-        ext = os.path.splitext(name)[1].lower()
-        if ext in IMAGE_EXTENSIONS:
-            files.append(name)
-    return files
-
-def _limit_files(files, limit, seed=42):
-    if limit is None or limit >= len(files):
-        return files
-
-    rng = np.random.default_rng(seed)
-
-    selected_indices = rng.choice(
-        len(files),
-        size = limit,
-        replace = False
-        )
-
-    selected_indices = sorted(selected_indices)
-
-    return [files[i] for i in selected_indices]
-
-def build_dataset(
-    magnification = "100x",
-    num_normal = None,
-    num_tumour = None,
-    feature_set = "all",
-    stain_normalization = None,
-    seed=42
-    ):
-    
-    normal_dir = f"data/{magnification}/normal"
-    tumour_dir = f"data/{magnification}/tumour"
-
-    normal_files = _limit_files(_list_image_files(normal_dir), num_normal, seed=seed)
-    tumour_files = _limit_files(_list_image_files(tumour_dir), num_tumour, seed=seed)
-
-    print(f"Using {len(normal_files)} normal images")
-    print(f"Using {len(tumour_files)} tumour images")
-
-    X = []
-    y = []
-
-    image_paths = []
-    seen_hashes = set()
-
-    normalizer = None
-
-    if stain_normalization in ["reinhard", "macenko"]:
-        target_image = load_target_image()
-
-        if stain_normalization == "reinhard":
-            normalizer = create_reinhard_normalizer(target_image)
-
-        elif stain_normalization == "macenko":
-            normalizer = create_macenko_normalizer(target_image)
-
-    # NORMAL LOOP
-    for filename in normal_files:
-        path = os.path.join(normal_dir, filename)
-        try:
-            img = load_image(path)
-
-            run_quality_checks(
-                img,
-                seen_hashes = seen_hashes
-            )
-
-            if stain_normalization is not None:
-                img = normalize_staining(
-                    img,
-                    method = stain_normalization,
-                    normalizer = normalizer
-                )
-
-            mask = segment_tissue(img)
-
-            features = extract_features(
-                img,
-                mask,
-                feature_set = feature_set
-            )
-
-            X.append(features)
-            y.append(0)
-            image_paths.append(path)
-        except Exception as e:
-            print(f"Failed NORMAL: {filename}")
-            print(e)
-
-    # TUMOUR LOOP
-    for filename in tumour_files:
-        path = os.path.join(tumour_dir, filename)
-        try:
-            img = load_image(path)
-
-            run_quality_checks(
-                img,
-                seen_hashes = seen_hashes
-            )
-
-            if stain_normalization is not None:
-                img = normalize_staining(
-                    img,
-                    method = stain_normalization,
-                    normalizer = normalizer
-                )
-
-            mask = segment_tissue(img)
-
-            features = extract_features(
-                img,
-                mask,
-                feature_set = feature_set
-            )
-
-            X.append(features)
-            y.append(1)
-            image_paths.append(path)
-        except Exception as e:
-            print(f"Failed TUMOUR: {filename}")
-            print(e)
-
-    X = np.asarray(X, dtype = float)
-    y = np.asarray(y, dtype = int)
-
-    if len(X) == 0:
-        raise ValueError("No images were loaded.")
-
-    used_files = {
-        "magnification": magnification,
-        "normal_files": normal_files,
-        "tumour_files": tumour_files
-    }
-
-    assert len(X) == len(image_paths)
-    assert len(y) == len(image_paths)
-
-    dataset_index = pd.DataFrame({
-        "index": np.arange(len(image_paths)),
-        "image_path": image_paths,
-        "label": y
-    })
-
-    dataset_index.to_csv(
-        f"data/{magnification}/dataset_index.csv",
-        index=False
-    )
-
-    return X, y, used_files, image_paths
-
-```
 
 ## demo.py
 
@@ -1202,7 +979,7 @@ validate_experiments(EXPERIMENTS)
 ```python
 import os
 import numpy as np
-from dataset import build_dataset
+from src.dataset import build_dataset
 from experiments import EXPERIMENTS
 from sklearn.model_selection import RepeatedStratifiedKFold
 from configs.experiment_config import (
@@ -1217,6 +994,7 @@ def generate_splits():
         magnification = config["magnification"]
         num_normal = config["num_normal"]
         num_tumour = config["num_tumour"]
+        stain_normalization = config["stain_normalization"]
         seed = config["seed"]
 
         split_key = (
@@ -1238,7 +1016,8 @@ def generate_splits():
             magnification = magnification,
             num_normal = num_normal,
             num_tumour = num_tumour,
-            feature_set = "all"
+            feature_set = config["feature_set"],
+            stain_normalization = stain_normalization
         )
 
         split_dir = (
@@ -1257,15 +1036,20 @@ def generate_splits():
             random_state = seed
         )
 
-        for fold, (train_idx, test_idx) in enumerate(
+        split_iterator = enumerate(
             rskf.split(X, y),
-            start = 1
-        ):
+            start=0
+        )
+
+        for iteration_idx, (train_idx, test_idx) in split_iterator:
+
+            repeat = (iteration_idx // N_SPLITS) + 1
+            fold = (iteration_idx % N_SPLITS) + 1
 
             np.save(
                 os.path.join(
                     split_dir,
-                    f"train_idx_fold_{fold}.npy"
+                    f"train_idx_repeat_{repeat}_fold_{fold}.npy"
                 ),
                 train_idx
             )
@@ -1273,7 +1057,7 @@ def generate_splits():
             np.save(
                 os.path.join(
                     split_dir,
-                    f"test_idx_fold_{fold}.npy"
+                    f"test_idx_repeat_{repeat}_fold_{fold}.npy"
                 ),
                 test_idx
             )
@@ -1426,9 +1210,9 @@ def plot_feature_correlation(X, feature_names, save_path, title = "Feature Corre
 ```python
 import pickle
 from pathlib import Path
-from dataset import build_dataset
+from src.dataset import build_dataset
 
-CACHE_VERSION = "v2"
+CACHE_VERSION = "v3"
 
 def get_or_cache_dataset(
     magnification,
@@ -1561,6 +1345,185 @@ def run_quality_checks(
 
 ```
 
+## dataset.py
+
+```python
+import os
+import numpy as np
+import pandas as pd
+from src.features import extract_features
+from src.data_quality import run_quality_checks
+
+from src.preprocessing import (
+    load_image, 
+    segment_tissue,
+    normalize_staining,
+    load_target_image,
+    create_reinhard_normalizer,
+    create_macenko_normalizer
+)
+
+
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"}
+
+def _list_image_files(folder):
+    if not os.path.isdir(folder):
+        raise FileNotFoundError(f"Folder not found: {folder}")
+
+    files = []
+    for name in sorted(os.listdir(folder)):
+        ext = os.path.splitext(name)[1].lower()
+        if ext in IMAGE_EXTENSIONS:
+            files.append(name)
+    return files
+
+def _limit_files(files, limit, seed=42):
+    if limit is None or limit >= len(files):
+        return files
+
+    rng = np.random.default_rng(seed)
+
+    selected_indices = rng.choice(
+        len(files),
+        size = limit,
+        replace = False
+        )
+
+    selected_indices = sorted(selected_indices)
+
+    return [files[i] for i in selected_indices]
+
+def build_dataset(
+    magnification = "100x",
+    num_normal = None,
+    num_tumour = None,
+    feature_set = "all",
+    stain_normalization = None,
+    seed=42
+    ):
+    
+    normal_dir = f"data/{magnification}/normal"
+    tumour_dir = f"data/{magnification}/tumour"
+
+    normal_files = _limit_files(_list_image_files(normal_dir), num_normal, seed=seed)
+    tumour_files = _limit_files(_list_image_files(tumour_dir), num_tumour, seed=seed)
+
+    print(f"Using {len(normal_files)} normal images")
+    print(f"Using {len(tumour_files)} tumour images")
+
+    X = []
+    y = []
+
+    image_paths = []
+    seen_hashes = set()
+
+    normalizer = None
+
+    if stain_normalization in ["reinhard", "macenko"]:
+        target_image = load_target_image()
+
+        if stain_normalization == "reinhard":
+            normalizer = create_reinhard_normalizer(target_image)
+
+        elif stain_normalization == "macenko":
+            normalizer = create_macenko_normalizer(target_image)
+
+    # NORMAL LOOP
+    for filename in normal_files:
+        path = os.path.join(normal_dir, filename)
+        try:
+            img = load_image(path)
+
+            run_quality_checks(
+                img,
+                seen_hashes = seen_hashes
+            )
+
+            if stain_normalization is not None:
+                img = normalize_staining(
+                    img,
+                    method = stain_normalization,
+                    normalizer = normalizer
+                )
+
+            mask = segment_tissue(img)
+
+            features = extract_features(
+                img,
+                mask,
+                feature_set = feature_set
+            )
+
+            X.append(features)
+            y.append(0)
+            image_paths.append(path)
+        except Exception as e:
+            print(f"Failed NORMAL: {filename}")
+            print(e)
+
+    # TUMOUR LOOP
+    for filename in tumour_files:
+        path = os.path.join(tumour_dir, filename)
+        try:
+            img = load_image(path)
+
+            run_quality_checks(
+                img,
+                seen_hashes = seen_hashes
+            )
+
+            if stain_normalization is not None:
+                img = normalize_staining(
+                    img,
+                    method = stain_normalization,
+                    normalizer = normalizer
+                )
+
+            mask = segment_tissue(img)
+
+            features = extract_features(
+                img,
+                mask,
+                feature_set = feature_set
+            )
+
+            X.append(features)
+            y.append(1)
+            image_paths.append(path)
+        except Exception as e:
+            print(f"Failed TUMOUR: {filename}")
+            print(e)
+
+    X = np.asarray(X, dtype = float)
+    y = np.asarray(y, dtype = int)
+
+    if len(X) == 0:
+        raise ValueError("No images were loaded.")
+
+    used_files = {
+        "magnification": magnification,
+        "normal_files": normal_files,
+        "tumour_files": tumour_files
+    }
+
+    assert len(X) == len(image_paths)
+    assert len(y) == len(image_paths)
+
+    dataset_index = pd.DataFrame({
+        "index": np.arange(len(image_paths)),
+        "image_path": image_paths,
+        "label": y
+    })
+
+    dataset_index.to_csv(
+        f"data/{magnification}/dataset_index.csv",
+        index=False
+    )
+
+    return X, y, used_files, image_paths
+
+```
+
 ## evaluation_utils.py
 
 ```python
@@ -1648,6 +1611,7 @@ from sklearn.model_selection import (
 
 def run_fold(
     fold,
+    repeat,
     X,
     y,
     image_paths,
@@ -1663,14 +1627,14 @@ def run_fold(
     train_idx = np.load(
         os.path.join(
             split_dir,
-            f"train_idx_fold_{fold}.npy"
+            f"train_idx_repeat_{repeat}_fold_{fold}.npy"
         )
     )
 
     test_idx = np.load(
         os.path.join(
             split_dir,
-            f"test_idx_fold_{fold}.npy"
+            f"test_idx_repeat_{repeat}_fold_{fold}.npy"
         )
     )
 
@@ -1717,6 +1681,7 @@ def run_fold(
 
     fold_row = {
         "experiment": experiment_name,
+        "repeat": repeat,
         "fold": fold,
         **fold_metrics
     }
@@ -1736,6 +1701,7 @@ def run_fold(
             "experiment": experiment_name,
             "model": model_type,
             "fold": fold,
+            "repeat": repeat,
             "image_path": img_path,
             "y_true": int(yt),
             "y_pred": int(yp),
@@ -1761,7 +1727,7 @@ def run_fold(
         y_pred,
         os.path.join(
             results_dir,
-            f"confusion_matrix_fold_{fold}.png"
+            f"confusion_matrix_repeat_{repeat}_fold_{fold}.png"
         ),
         normalize=True
     )
@@ -1783,6 +1749,7 @@ def run_fold(
         "y_prob": y_prob,
         "best_params": {
             "fold": fold,
+            "repeat": repeat,
             "best_cv_auc": grid.best_score_,
             "cv_std": grid.cv_results_["std_test_score"][grid.best_index_],
             "n_hyperparameter_configs": len(grid.cv_results_["params"]),
@@ -1909,6 +1876,7 @@ def plot_shap_summary_rf(model, X, feature_names, save_path):
 ```python
 import cv2
 import numpy as np
+from configs.preprocessing_config import MIN_TISSUE_FRACTION
 
 from skimage.feature import(
     local_binary_pattern, 
@@ -1971,7 +1939,6 @@ FEATURE_GROUPS = {
     ]
 }
 
-MIN_TISSUE_FRACTION = 0.05
 
 def get_feature_names(feature_set="all"):
 
@@ -2562,12 +2529,11 @@ def normalize_staining(
 
         normalized = normalized.numpy()
 
-        print(normalized.shape)
-        print(normalized.dtype)
-        print(normalized.min())
-        print(normalized.max())
-
-        return normalized.astype(np.uint8)
+        normalized = np.clip(
+            normalized,
+            0,
+            255
+        ).astype(np.uint8)
 
         return normalized
 
@@ -2827,6 +2793,12 @@ import os
 import numpy as np
 from scipy.stats import t
 
+from configs.experiment_config import (
+    N_SPLITS,
+    N_REPEATS,
+    TOTAL_CV_ITERATIONS
+)
+
 def confidence_interval_naive(values, confidence=0.95):
     values = np.asarray(values)
 
@@ -2875,33 +2847,45 @@ def confidence_interval(
         mean + margin
     )
 
-def verify_same_splits(exp1_dir, exp2_dir, n_folds=5):
+def verify_same_splits(
+    exp1_dir,
+    exp2_dir,
+    n_splits = 5,
+    n_repeats = 5
+):
 
-    for fold in range(1, n_folds + 1):
+    assert TOTAL_CV_ITERATIONS == (N_SPLITS * N_REPEATS)
 
-        exp1_path = os.path.join(
-            exp1_dir,
-            f"test_idx_fold_{fold}.npy"
-        )
+    for repeat in range(1, n_repeats + 1):
 
-        exp2_path = os.path.join(
-            exp2_dir,
-            f"test_idx_fold_{fold}.npy"
-        )
+        for fold in range(1, n_splits + 1):
 
-        if not os.path.exists(exp1_path):
-            print(f"Missing split file: {exp1_path}")
-            return False
+            exp1_path = os.path.join(
+                exp1_dir,
+                f"test_idx_repeat_{repeat}_fold_{fold}.npy"
+            )
 
-        if not os.path.exists(exp2_path):
-            print(f"Missing split file: {exp2_path}")
-            return False
+            exp2_path = os.path.join(
+                exp2_dir,
+                f"test_idx_repeat_{repeat}_fold_{fold}.npy"
+            )
 
-        exp1_test = np.load(exp1_path)
-        exp2_test = np.load(exp2_path)
+            if not os.path.exists(exp1_path):
+                print(f"Missing split file: {exp1_path}")
+                return False
 
-        if not np.array_equal(exp1_test, exp2_test):
-            return False
+            if not os.path.exists(exp2_path):
+                print(f"Missing split file: {exp2_path}")
+                return False
+
+            exp1_test = np.load(exp1_path)
+            exp2_test = np.load(exp2_path)
+
+            if not np.array_equal(
+                exp1_test,
+                exp2_test
+            ):
+                return False
 
     return True
 
@@ -3555,7 +3539,7 @@ def sample_image():
 ## test_dataset.py
 
 ```python
-from dataset import _limit_files
+from src.dataset import _limit_files
 
 
 def test_limit_files_size():
@@ -3768,8 +3752,8 @@ def test_class_balance_preserved():
 
 def test_verify_same_splits():
     assert verify_same_splits(
-        "cv_splits/100X_89_439",
-        "cv_splits/100X_89_439"
+        "cv_splits/100X_89_439_seed_42",
+        "cv_splits/100X_89_439_seed_42"
     )
 
 
@@ -3902,19 +3886,22 @@ import os
 import json
 import logging
 import argparse
-import pandas as pd
-
 import matplotlib
+import pandas as pd
 matplotlib.use("Agg")
+from src.cache_utils import get_or_cache_dataset
+from src.evaluation_utils import save_overall_evaluation
+from src.learning_curve_analysis import plot_learning_curve
 
 from experiments import EXPERIMENTS
 from src.features import get_feature_names
 from src.experiment_runner import run_fold
 from src.rf_analysis import run_rf_analysis
-from configs.experiment_config import N_SPLITS
-from src.cache_utils import get_or_cache_dataset
-from src.evaluation_utils import save_overall_evaluation
-from src.learning_curve_analysis import plot_learning_curve
+
+from configs.experiment_config import (
+    N_SPLITS,
+    N_REPEATS
+)
 
 from src.results_utils import (
     initialize_summary_csv,
@@ -3974,12 +3961,15 @@ def run_experiment(config):
 
         json.dump(config, f, indent = 4)
 
+    STAIN_NORMALIZATION = config.get("stain_normalization", None)
+
     X, y, used_files, image_paths = get_or_cache_dataset(
         magnification = MAGNIFICATION,
         num_normal = NUM_NORMAL,
         num_tumour = NUM_TUMOUR,
         feature_set = FEATURE_SET,
-        seed = SEED
+        seed = SEED,
+        stain_normalization = STAIN_NORMALIZATION
     )
 
     with open(
@@ -4034,48 +4024,50 @@ def run_experiment(config):
         f"seed_{SEED}"
     )
 
-    for fold in range(1, N_SPLITS + 1):
-        try:
-            result = run_fold(
-                fold=fold,
-                X=X,
-                y=y,
-                image_paths=image_paths,
-                split_dir=SPLIT_DIR,
-                model_type=MODEL_TYPE,
-                results_dir=RESULTS_DIR,
-                experiment_name=EXPERIMENT_NAME,
-                feature_names=feature_names,
-                use_scaling=USE_SCALING,
-                seed=SEED
-            )
+    for repeat in range(1, N_REPEATS + 1):
+        for fold in range(1, N_SPLITS + 1):
+            try:
+                result = run_fold(
+                    fold=fold,
+                    X=X,
+                    y=y,
+                    image_paths=image_paths,
+                    split_dir=SPLIT_DIR,
+                    model_type=MODEL_TYPE,
+                    results_dir=RESULTS_DIR,
+                    experiment_name=EXPERIMENT_NAME,
+                    feature_names = feature_names,
+                    use_scaling = USE_SCALING,
+                    seed = SEED,
+                    repeat = repeat
+                )
 
-            fold_rows.append(result["fold_row"])
+                fold_rows.append(result["fold_row"])
 
-            prediction_rows.extend(result["prediction_rows"])
+                prediction_rows.extend(result["prediction_rows"])
 
-            all_y_test.extend(result["y_test"])
-            all_y_pred.extend(result["y_pred"])
-            all_y_prob.extend(result["y_prob"])
+                all_y_test.extend(result["y_test"])
+                all_y_pred.extend(result["y_pred"])
+                all_y_prob.extend(result["y_prob"])
 
-            best_params_rows.append(result["best_params"])
+                best_params_rows.append(result["best_params"])
 
-        except Exception as e:
-            logger.exception(
-                f"Fold {fold} failed."
-            )
+            except Exception as e:
+                logger.exception(
+                    f"Fold {fold} failed."
+                )
 
-            log_experiment_failure(
-                csv_path=os.path.join(
-                    "results",
-                    "failed_experiments.csv"
-                ),
-                experiment_name = EXPERIMENT_NAME,
-                fold = fold,
-                exception = e
-            )
+                log_experiment_failure(
+                    csv_path=os.path.join(
+                        "results",
+                        "failed_experiments.csv"
+                    ),
+                    experiment_name = EXPERIMENT_NAME,
+                    fold = fold,
+                    exception = e
+                )
 
-            raise
+                raise
 
     fold_df = pd.DataFrame(fold_rows)
 
