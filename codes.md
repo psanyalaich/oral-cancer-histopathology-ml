@@ -311,7 +311,7 @@ This limitation is explicitly acknowledged during interpretation of results.
 - Run experiment: ```python train_model.py```
 - Rebuild summary CSV: ```python rebuild_summary.py```
 - Run statistical analysis: ```python stats_analysis.py```
-- Entire codebase: ```codes.md```
+- Entire codebase: [`codes.md`](codes.md)
 
 ## Sample Histopathology Images
 | Normal 100x                             | OSCC 100x                             | Normal 400x                             | OSCC 400x                             |
