@@ -2,19 +2,22 @@ import os
 import json
 import logging
 import argparse
-import pandas as pd
-
 import matplotlib
+import pandas as pd
 matplotlib.use("Agg")
+from src.cache_utils import get_or_cache_dataset
+from src.evaluation_utils import save_overall_evaluation
+from src.learning_curve_analysis import plot_learning_curve
 
 from experiments import EXPERIMENTS
 from src.features import get_feature_names
 from src.experiment_runner import run_fold
 from src.rf_analysis import run_rf_analysis
-from configs.experiment_config import N_SPLITS
-from src.cache_utils import get_or_cache_dataset
-from src.evaluation_utils import save_overall_evaluation
-from src.learning_curve_analysis import plot_learning_curve
+
+from configs.experiment_config import (
+    N_SPLITS,
+    N_REPEATS
+)
 
 from src.results_utils import (
     initialize_summary_csv,
@@ -74,12 +77,15 @@ def run_experiment(config):
 
         json.dump(config, f, indent = 4)
 
+    STAIN_NORMALIZATION = config.get("stain_normalization", None)
+
     X, y, used_files, image_paths = get_or_cache_dataset(
         magnification = MAGNIFICATION,
         num_normal = NUM_NORMAL,
         num_tumour = NUM_TUMOUR,
         feature_set = FEATURE_SET,
-        seed = SEED
+        seed = SEED,
+        stain_normalization = STAIN_NORMALIZATION
     )
 
     with open(
@@ -134,48 +140,50 @@ def run_experiment(config):
         f"seed_{SEED}"
     )
 
-    for fold in range(1, N_SPLITS + 1):
-        try:
-            result = run_fold(
-                fold=fold,
-                X=X,
-                y=y,
-                image_paths=image_paths,
-                split_dir=SPLIT_DIR,
-                model_type=MODEL_TYPE,
-                results_dir=RESULTS_DIR,
-                experiment_name=EXPERIMENT_NAME,
-                feature_names=feature_names,
-                use_scaling=USE_SCALING,
-                seed=SEED
-            )
+    for repeat in range(1, N_REPEATS + 1):
+        for fold in range(1, N_SPLITS + 1):
+            try:
+                result = run_fold(
+                    fold=fold,
+                    X=X,
+                    y=y,
+                    image_paths=image_paths,
+                    split_dir=SPLIT_DIR,
+                    model_type=MODEL_TYPE,
+                    results_dir=RESULTS_DIR,
+                    experiment_name=EXPERIMENT_NAME,
+                    feature_names = feature_names,
+                    use_scaling = USE_SCALING,
+                    seed = SEED,
+                    repeat = repeat
+                )
 
-            fold_rows.append(result["fold_row"])
+                fold_rows.append(result["fold_row"])
 
-            prediction_rows.extend(result["prediction_rows"])
+                prediction_rows.extend(result["prediction_rows"])
 
-            all_y_test.extend(result["y_test"])
-            all_y_pred.extend(result["y_pred"])
-            all_y_prob.extend(result["y_prob"])
+                all_y_test.extend(result["y_test"])
+                all_y_pred.extend(result["y_pred"])
+                all_y_prob.extend(result["y_prob"])
 
-            best_params_rows.append(result["best_params"])
+                best_params_rows.append(result["best_params"])
 
-        except Exception as e:
-            logger.exception(
-                f"Fold {fold} failed."
-            )
+            except Exception as e:
+                logger.exception(
+                    f"Fold {fold} failed."
+                )
 
-            log_experiment_failure(
-                csv_path=os.path.join(
-                    "results",
-                    "failed_experiments.csv"
-                ),
-                experiment_name = EXPERIMENT_NAME,
-                fold = fold,
-                exception = e
-            )
+                log_experiment_failure(
+                    csv_path=os.path.join(
+                        "results",
+                        "failed_experiments.csv"
+                    ),
+                    experiment_name = EXPERIMENT_NAME,
+                    fold = fold,
+                    exception = e
+                )
 
-            raise
+                raise
 
     fold_df = pd.DataFrame(fold_rows)
 

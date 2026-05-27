@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from configs.preprocessing_config import MIN_TISSUE_FRACTION
 
 from skimage.feature import(
     local_binary_pattern, 
@@ -62,7 +63,6 @@ FEATURE_GROUPS = {
     ]
 }
 
-MIN_TISSUE_FRACTION = 0.05
 
 def get_feature_names(feature_set="all"):
 

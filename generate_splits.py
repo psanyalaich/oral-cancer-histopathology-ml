@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from dataset import build_dataset
+from src.dataset import build_dataset
 from experiments import EXPERIMENTS
 from sklearn.model_selection import RepeatedStratifiedKFold
 from configs.experiment_config import (
@@ -15,6 +15,7 @@ def generate_splits():
         magnification = config["magnification"]
         num_normal = config["num_normal"]
         num_tumour = config["num_tumour"]
+        stain_normalization = config["stain_normalization"]
         seed = config["seed"]
 
         split_key = (
@@ -36,7 +37,8 @@ def generate_splits():
             magnification = magnification,
             num_normal = num_normal,
             num_tumour = num_tumour,
-            feature_set = "all"
+            feature_set = config["feature_set"],
+            stain_normalization = stain_normalization
         )
 
         split_dir = (
@@ -55,15 +57,20 @@ def generate_splits():
             random_state = seed
         )
 
-        for fold, (train_idx, test_idx) in enumerate(
+        split_iterator = enumerate(
             rskf.split(X, y),
-            start = 1
-        ):
+            start=0
+        )
+
+        for iteration_idx, (train_idx, test_idx) in split_iterator:
+
+            repeat = (iteration_idx // N_SPLITS) + 1
+            fold = (iteration_idx % N_SPLITS) + 1
 
             np.save(
                 os.path.join(
                     split_dir,
-                    f"train_idx_fold_{fold}.npy"
+                    f"train_idx_repeat_{repeat}_fold_{fold}.npy"
                 ),
                 train_idx
             )
@@ -71,7 +78,7 @@ def generate_splits():
             np.save(
                 os.path.join(
                     split_dir,
-                    f"test_idx_fold_{fold}.npy"
+                    f"test_idx_repeat_{repeat}_fold_{fold}.npy"
                 ),
                 test_idx
             )

@@ -50,7 +50,7 @@ def test_class_balance_preserved():
 
 def test_verify_same_splits():
     assert verify_same_splits(
-        "cv_splits/100X_89_439",
-        "cv_splits/100X_89_439"
+        "cv_splits/100X_89_439_seed_42",
+        "cv_splits/100X_89_439_seed_42"
     )
 

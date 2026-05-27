@@ -150,12 +150,11 @@ def normalize_staining(
 
         normalized = normalized.numpy()
 
-        print(normalized.shape)
-        print(normalized.dtype)
-        print(normalized.min())
-        print(normalized.max())
-
-        return normalized.astype(np.uint8)
+        normalized = np.clip(
+            normalized,
+            0,
+            255
+        ).astype(np.uint8)
 
         return normalized
 

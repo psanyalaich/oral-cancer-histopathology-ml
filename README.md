@@ -24,6 +24,16 @@ The study evaluates:
 
 The long-term objective is to establish strong classical ML baselines before transitioning to deep learning and domain generalization experiments.
 
+## Summary
+| Category              | Best Configuration                                | Key Result             |
+| --------------------- | ------------------------------------------------- | ---------------------- |
+| Best Overall          | `svm_scaled_all_no_norm_full_100x_seed_42`        | AUC ~0.986             |
+| Best RF               | `rf_unscaled_haralick_reinhard_full_100x_seed_42` | F1 ~0.92               |
+| Best Magnification    | 100x                                              | Consistently strongest |
+| Best Feature Strategy | Combined handcrafted descriptors                  | Highest discrimination |
+| Best Dataset Regime   | Full dataset                                      | Lowest variance        |
+
+
 ## Dataset
 - [Histopathological imaging database for Oral Cancer analysis](https://data.mendeley.com/datasets/ftmp4cvtmb/2)
 - DOI: `10.17632/ftmp4cvtmb.2`
@@ -42,11 +52,14 @@ Magnifications used:
 ## Experiment Scale
 
 The current pipeline includes:
-- 252 completed experiments
+- 300+ completed experiments
 - repeated stratified cross-validation
 - multiple dataset sizes
 - handcrafted feature combination benchmarking
 - stain normalization comparisons
+  - no normalization
+  - Reinhard normalization
+  - Macenko normalization
 - scaling vs non-scaling comparisons
 - Random Forest and SVM benchmarking
 - calibration analysis
@@ -225,38 +238,6 @@ This limitation is explicitly acknowledged during interpretation of results.
 | MCC | 
 | Brier score |
 
-## Repository Structure
-```text
-oral-cancer-histopathology-ml/
-│
-├── src/
-│   ├── dataset.py
-│   ├── feature_extraction.py
-│   ├── experiment_runner.py
-│   ├── explainability.py
-│   ├── evaluation.py
-│   ├── learning_curve_analysis.py
-│   ├── model_utils.py
-│   ├── plotting.py
-│   ├── results_utils.py
-│   ├── statistics_utils.py
-│   └── visualize_results.py
-│
-├── results/
-│   └── seed_42/
-│       ├── experiment_1/
-│       ├── experiment_2/
-│       └── ...
-│
-├── feature_cache/
-├── cv_splits/
-├── data/
-├── train_model.py
-├── rebuild_summary.py
-├── stats_analysis.py
-└── requirements.txt
-```
-
 ## Installation
 - Clone Repository: 
     - ```git clone https://github.com/yourusername/oral-cancer-histopathology-ml.git```
@@ -278,26 +259,33 @@ oral-cancer-histopathology-ml/
 | --------------------------------------- | ------------------------------------- | --------------------------------------- | ------------------------------------- |
 | ![](data/100x/normal/Normal_100x_1.jpg) | ![](data/100x/tumour/OSCC_100x_1.jpg) | ![](data/400x/normal/Normal_400x_1.jpg) | ![](data/400x/tumour/OSCC_400x_1.jpg) |
 
-## Example Outputs
 
-### Best Output: 
-| Model | Features    | Magnification | Accuracy | AUC   | MCC   |
-| ----- | ----------- | ------------- | -------- | ----- | ----- |
-| SVM   | Color + LBP | 100x          | 0.900    | 0.958 | 0.696 |
+## Current Best Classical ML Configuration
 
+The strongest observed configuration under the current evaluation setup is:
+- Model: SVM (RBF)
+- Features: Combined handcrafted descriptors
+- Magnification: 100x
+- Stain normalization: None
+- Mean AUC: ~0.98
+- Mean F1-score: ~0.94
 
-### Best SVM Configuration: ```svm_scaled_color_lbp_no_norm_full_100x_seed_42```
-
-| ROC Curve                             | Precision-Recall Curve                             | Confusion Matrix                             | Calibration Plot                             |
-| --------------------------------------- | ------------------------------------- | --------------------------------------- | ------------------------------------- |
-| ![ROC Curve](results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/roc_curve.png) | ![PR Curve](results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/pr_curve.png) | ![Confusion Matrix](results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/confusion_matrix_overall.png) | ![Calibration Plot](results/seed_42/svm_scaled_color_lbp_no_norm_full_100x_seed_42/calibration_curve_fold_5.png) |
+This suggests that fused handcrafted descriptors combined with feature scaling remain highly competitive under controlled experimental settings.
 
 ---
 
-### Best Random Forest Configuration: ```rf_unscaled_color_no_norm_full_100x_seed_42```
-| Feature Correlation                             | Feature Importance                             | SHAP Explainability (Random Forest)                             |
-| --------------------------------------- | ------------------------------------- | ------------------------------------- |
-| ![Feature Correlation](results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/feature_correlation.png)   |  ![Feature Importance](results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/feature_importance.png)    | ![SHAP Summary](results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/shap_summary.png)
+### Best SVM Configuration: ```svm_scaled_all_no_norm_full_100x_seed_42```
+
+| ROC Curve                             | Precision-Recall Curve                             | Confusion Matrix                             | Calibration Plot                             |
+| --------------------------------------- | ------------------------------------- | --------------------------------------- | ------------------------------------- |
+| ![ROC Curve](results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/roc_curve.png) | ![PR Curve](results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/pr_curve.png) | ![Confusion Matrix](results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/confusion_matrix_overall.png) | ![Calibration Plot](results/seed_42/svm_scaled_all_no_norm_full_100x_seed_42/calibration_curve_fold_2.png) |
+
+---
+
+### Best Random Forest Configuration: ```rf_unscaled_haralick_reinhard_full_100x_seed_42```
+| SHAP Explainability (Random Forest)                             |
+| ------------------------------------- |
+| ![SHAP Summary](results/seed_42/rf_unscaled_haralick_reinhard_full_100x_seed_42/shap_summary.png)
 
 ---
 
@@ -315,6 +303,9 @@ Initial experiments suggest:
 - class imbalance strongly affects specificity
 - small datasets produce unstable fold variance
 - calibration analysis is important for medical ML evaluation
+- learning curves suggest substantial performance stabilization as dataset size increases
+- variance decreases significantly with larger training sets
+- performance improvements begin plateauing at higher sample counts
 
 ## Statistical Findings
 Statistical comparison experiments suggest:
@@ -360,33 +351,9 @@ Key observations during development:
 - automated experiment management prevents manual tracking errors
 - cached feature extraction dramatically improves iteration speed
 - summary CSV rebuilding is important for interrupted experiments
-
-## Current Development Status
-
-### Implemented
-- preprocessing pipeline
-- handcrafted feature extraction
-- experiment automation
-- cross-validation benchmarking
-- statistical testing
-- calibration analysis
-- learning curve analysis
-- feature caching system
-- duplicate detection
-- explainability analysis
-
-### In Progress
-- seed stability analysis
-- stain normalization benchmarking
-- experiment optimization
-- robustness evaluation
-
-### Planned
-- deep learning benchmarking
-- HistoSet integration
-- pancreatic histopathology experiments
-- domain generalization analysis
-- external dataset evaluation
+- dataset filtering changes require regeneration of deterministic CV splits
+- cached feature datasets and split indices must remain synchronized
+- preprocessing-based sample rejection can silently invalidate stored split indices
 
 ## Limitations
 - no patient-wise splitting available
@@ -396,17 +363,6 @@ Key observations during development:
 - handcrafted descriptors cannot capture all morphology patterns
 - possible hidden patient-level leakage due to image-level splitting
 - stain normalization benchmarking still ongoing
-
-## Future Directions
-Planned future work:
-- CNN benchmarking
-- transfer learning experiments
-- attention-based architectures
-- domain adaptation
-- multi-magnification fusion
-- external validation datasets
-- pathology foundation models
-- handcrafted vs deep feature comparison
 
 ## Citation
 If you use this repository, please cite the original dataset creators.
@@ -420,6 +376,6 @@ If you use this repository, please cite the original dataset creators.
 
 ---
 
-Date Updated: <!--LAST_UPDATED--> 26-05-2026
+Date Updated: <!--LAST_UPDATED--> 27-05-2026
 
 ---

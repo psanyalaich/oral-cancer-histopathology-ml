@@ -1,8 +1,8 @@
 import pickle
 from pathlib import Path
-from dataset import build_dataset
+from src.dataset import build_dataset
 
-CACHE_VERSION = "v2"
+CACHE_VERSION = "v3"
 
 def get_or_cache_dataset(
     magnification,

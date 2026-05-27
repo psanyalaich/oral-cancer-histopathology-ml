@@ -1,4 +1,4 @@
-from dataset import _limit_files
+from src.dataset import _limit_files
 
 
 def test_limit_files_size():

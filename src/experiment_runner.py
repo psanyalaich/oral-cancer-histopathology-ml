@@ -21,6 +21,7 @@ from sklearn.model_selection import (
 
 def run_fold(
     fold,
+    repeat,
     X,
     y,
     image_paths,
@@ -36,14 +37,14 @@ def run_fold(
     train_idx = np.load(
         os.path.join(
             split_dir,
-            f"train_idx_fold_{fold}.npy"
+            f"train_idx_repeat_{repeat}_fold_{fold}.npy"
         )
     )
 
     test_idx = np.load(
         os.path.join(
             split_dir,
-            f"test_idx_fold_{fold}.npy"
+            f"test_idx_repeat_{repeat}_fold_{fold}.npy"
         )
     )
 
@@ -90,6 +91,7 @@ def run_fold(
 
     fold_row = {
         "experiment": experiment_name,
+        "repeat": repeat,
         "fold": fold,
         **fold_metrics
     }
@@ -109,6 +111,7 @@ def run_fold(
             "experiment": experiment_name,
             "model": model_type,
             "fold": fold,
+            "repeat": repeat,
             "image_path": img_path,
             "y_true": int(yt),
             "y_pred": int(yp),
@@ -134,7 +137,7 @@ def run_fold(
         y_pred,
         os.path.join(
             results_dir,
-            f"confusion_matrix_fold_{fold}.png"
+            f"confusion_matrix_repeat_{repeat}_fold_{fold}.png"
         ),
         normalize=True
     )
@@ -156,6 +159,7 @@ def run_fold(
         "y_prob": y_prob,
         "best_params": {
             "fold": fold,
+            "repeat": repeat,
             "best_cv_auc": grid.best_score_,
             "cv_std": grid.cv_results_["std_test_score"][grid.best_index_],
             "n_hyperparameter_configs": len(grid.cv_results_["params"]),

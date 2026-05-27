@@ -2,6 +2,12 @@ import os
 import numpy as np
 from scipy.stats import t
 
+from configs.experiment_config import (
+    N_SPLITS,
+    N_REPEATS,
+    TOTAL_CV_ITERATIONS
+)
+
 def confidence_interval_naive(values, confidence=0.95):
     values = np.asarray(values)
 
@@ -50,32 +56,44 @@ def confidence_interval(
         mean + margin
     )
 
-def verify_same_splits(exp1_dir, exp2_dir, n_folds=5):
+def verify_same_splits(
+    exp1_dir,
+    exp2_dir,
+    n_splits = 5,
+    n_repeats = 5
+):
 
-    for fold in range(1, n_folds + 1):
+    assert TOTAL_CV_ITERATIONS == (N_SPLITS * N_REPEATS)
 
-        exp1_path = os.path.join(
-            exp1_dir,
-            f"test_idx_fold_{fold}.npy"
-        )
+    for repeat in range(1, n_repeats + 1):
 
-        exp2_path = os.path.join(
-            exp2_dir,
-            f"test_idx_fold_{fold}.npy"
-        )
+        for fold in range(1, n_splits + 1):
 
-        if not os.path.exists(exp1_path):
-            print(f"Missing split file: {exp1_path}")
-            return False
+            exp1_path = os.path.join(
+                exp1_dir,
+                f"test_idx_repeat_{repeat}_fold_{fold}.npy"
+            )
 
-        if not os.path.exists(exp2_path):
-            print(f"Missing split file: {exp2_path}")
-            return False
+            exp2_path = os.path.join(
+                exp2_dir,
+                f"test_idx_repeat_{repeat}_fold_{fold}.npy"
+            )
 
-        exp1_test = np.load(exp1_path)
-        exp2_test = np.load(exp2_path)
+            if not os.path.exists(exp1_path):
+                print(f"Missing split file: {exp1_path}")
+                return False
 
-        if not np.array_equal(exp1_test, exp2_test):
-            return False
+            if not os.path.exists(exp2_path):
+                print(f"Missing split file: {exp2_path}")
+                return False
+
+            exp1_test = np.load(exp1_path)
+            exp2_test = np.load(exp2_path)
+
+            if not np.array_equal(
+                exp1_test,
+                exp2_test
+            ):
+                return False
 
     return True
